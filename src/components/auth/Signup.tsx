@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import { useNavigate, Link } from "react-router-dom";
-import { signUp } from "../../services/auth";
+import { signUp, signIn } from "../../services/auth";
 import { Button } from "../ui/button";
 import { Input } from "../ui/input";
 import { Label } from "../ui/label";
@@ -44,12 +44,10 @@ const Signup: React.FC = () => {
 
     try {
       await signUp(email, password);
-      setSuccessMessage(
-        "Registration successful! Please check your email to confirm your account.",
-      );
-      setTimeout(() => {
-        navigate("/login");
-      }, 3000);
+      // After successful signup, automatically sign in
+      await signIn(email, password);
+      // Navigate to home page immediately
+      navigate("/");
     } catch (err: any) {
       setError(err.message || "Failed to sign up");
     } finally {

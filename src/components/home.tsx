@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { ArrowRight, Heart, Mail, Shield, Sparkles, Truck } from "lucide-react";
 import { Link } from "react-router-dom";
+import ProfileDropdown from "./ProfileDropdown";
 
 const Home = () => {
   return (
@@ -42,12 +43,17 @@ const Home = () => {
             Contact
           </a>
         </nav>
-        <Button
-          variant="outline"
-          className="hidden md:flex border-rose-400 text-rose-500 hover:bg-rose-50"
-        >
-          Track My Letter
-        </Button>
+        <div className="flex items-center space-x-4">
+          <Link to="/track">
+            <Button
+              variant="outline"
+              className="hidden md:flex border-rose-400 text-rose-500 hover:bg-rose-50"
+            >
+              Track My Letter
+            </Button>
+          </Link>
+          <ProfileDropdown />
+        </div>
         <Button variant="ghost" size="icon" className="md:hidden text-gray-600">
           <svg
             xmlns="http://www.w3.org/2000/svg"

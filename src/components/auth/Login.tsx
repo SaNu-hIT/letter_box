@@ -29,7 +29,8 @@ const Login: React.FC = () => {
 
     try {
       await signIn(email, password);
-      navigate("/dashboard");
+      // Navigate directly to home page after successful login
+      navigate("/");
     } catch (err: any) {
       setError(err.message || "Failed to sign in");
     } finally {
@@ -114,6 +115,14 @@ const Login: React.FC = () => {
                 className="text-pink-600 hover:text-pink-800 font-medium"
               >
                 Sign up
+              </Link>
+            </div>
+            <div className="text-sm text-center">
+              <Link
+                to="/forgot-password"
+                className="text-pink-600 hover:text-pink-800 font-medium"
+              >
+                Forgot your password?
               </Link>
             </div>
             <div className="text-xs text-center text-gray-400">

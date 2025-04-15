@@ -1,5 +1,7 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { motion } from "framer-motion";
+import { useAuth } from "../contexts/AuthContext";
+import { useNavigate } from "react-router-dom";
 import {
   ChevronLeft,
   ChevronRight,
@@ -7,8 +9,10 @@ import {
   Send,
   Eye,
   Sparkles,
+  Save,
 } from "lucide-react";
 import { Button } from "./ui/button";
+import { useToast } from "./ui/use-toast";
 import { Input } from "./ui/input";
 import { Textarea } from "./ui/textarea";
 import {
@@ -26,19 +30,30 @@ import LetterPreview from "./LetterPreview";
 
 interface LetterCreationFormProps {
   onComplete?: (letterData: LetterData) => void;
+  draftId?: string;
 }
 
 export interface LetterData {
+  id?: string;
   message: string;
   style: string;
   recipientName: string;
   recipientAddress: string;
   deliverySpeed: string;
+  status?: string;
+  createdAt?: string;
+  updatedAt?: string;
+  userId?: string;
+  isDraft?: boolean;
 }
 
 const LetterCreationForm: React.FC<LetterCreationFormProps> = ({
   onComplete = () => {},
+  draftId,
 }) => {
+  const { toast } = useToast();
+  const { user } = useAuth();
+  const navigate = useNavigate();
   const [currentStep, setCurrentStep] = useState(0);
   const [letterData, setLetterData] = useState<LetterData>({
     message: "",
@@ -46,7 +61,11 @@ const LetterCreationForm: React.FC<LetterCreationFormProps> = ({
     recipientName: "",
     recipientAddress: "",
     deliverySpeed: "standard",
+    isDraft: true,
   });
+
+  const [isSaving, setIsSaving] = useState(false);
+  const [isLoading, setIsLoading] = useState(draftId ? true : false);
 
   const steps = [
     { title: "Write Message", icon: <Heart className="h-5 w-5" /> },
@@ -60,11 +79,125 @@ const LetterCreationForm: React.FC<LetterCreationFormProps> = ({
     setLetterData((prev) => ({ ...prev, [field]: value }));
   };
 
+  // Load draft if draftId is provided
+  useEffect(() => {
+    if (draftId) {
+      loadDraft(draftId);
+    }
+  }, [draftId]);
+
+  const loadDraft = async (id: string) => {
+    try {
+      setIsLoading(true);
+      // This would be replaced with an actual API call
+      // For now, we'll simulate loading from localStorage
+      const savedDrafts = JSON.parse(
+        localStorage.getItem("letterDrafts") || "[]",
+      );
+      const draft = savedDrafts.find((d: LetterData) => d.id === id);
+
+      if (draft) {
+        setLetterData(draft);
+        toast({
+          title: "Draft loaded",
+          description: "Your draft has been loaded successfully.",
+        });
+      }
+    } catch (error) {
+      console.error("Error loading draft:", error);
+      toast({
+        title: "Error",
+        description: "Failed to load your draft. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const saveDraft = async () => {
+    if (!user) {
+      toast({
+        title: "Authentication required",
+        description: "Please log in to save drafts.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    try {
+      setIsSaving(true);
+      const draftToSave = {
+        ...letterData,
+        id: letterData.id || `draft-${Date.now()}`,
+        userId: user.id,
+        updatedAt: new Date().toISOString(),
+        createdAt: letterData.createdAt || new Date().toISOString(),
+        isDraft: true,
+      };
+
+      // Try to save to Supabase first
+      try {
+        const { saveLetter, updateLetter } = await import("@/services/letters");
+
+        if (draftToSave.id && draftToSave.id.startsWith("draft-")) {
+          // For new drafts or localStorage drafts
+          const savedLetter = await saveLetter(draftToSave);
+          setLetterData(savedLetter);
+        } else {
+          // For existing Supabase drafts
+          const updatedLetter = await updateLetter(
+            draftToSave.id!,
+            draftToSave,
+          );
+          setLetterData(updatedLetter);
+        }
+      } catch (supabaseError) {
+        console.error(
+          "Error saving to Supabase, falling back to localStorage",
+          supabaseError,
+        );
+
+        // Fallback to localStorage
+        const savedDrafts = JSON.parse(
+          localStorage.getItem("letterDrafts") || "[]",
+        );
+        const existingDraftIndex = savedDrafts.findIndex(
+          (d: LetterData) => d.id === draftToSave.id,
+        );
+
+        if (existingDraftIndex >= 0) {
+          savedDrafts[existingDraftIndex] = draftToSave;
+        } else {
+          savedDrafts.push(draftToSave);
+        }
+
+        localStorage.setItem("letterDrafts", JSON.stringify(savedDrafts));
+        setLetterData(draftToSave);
+      }
+
+      toast({
+        title: "Draft saved",
+        description: "Your letter has been saved as a draft.",
+      });
+    } catch (error) {
+      console.error("Error saving draft:", error);
+      toast({
+        title: "Error",
+        description: "Failed to save your draft. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
   const nextStep = () => {
     if (currentStep < steps.length - 1) {
       setCurrentStep(currentStep + 1);
     } else {
-      onComplete(letterData);
+      // Final step - navigate to payment page
+      navigate("/payment", { state: { letterData } });
     }
   };
 
@@ -98,7 +231,7 @@ const LetterCreationForm: React.FC<LetterCreationFormProps> = ({
   ];
 
   return (
-    <div className="w-full max-w-4xl mx-auto bg-white rounded-xl shadow-lg overflow-hidden">
+    <div className="w-full max-w-4xl mx-auto bg-white rounded-xl shadow-lg overflow-hidden my-8">
       {/* Progress Steps */}
       <div className="bg-gradient-to-r from-pink-100 to-purple-100 p-4">
         <div className="flex justify-between items-center">
@@ -398,17 +531,30 @@ const LetterCreationForm: React.FC<LetterCreationFormProps> = ({
 
           {/* Navigation Buttons */}
           <div className="flex justify-between mt-8">
-            <Button
-              variant="outline"
-              onClick={prevStep}
-              disabled={currentStep === 0}
-              className="border-pink-300 text-pink-700 hover:bg-pink-50"
-            >
-              <ChevronLeft className="mr-2 h-4 w-4" /> Back
-            </Button>
+            <div className="flex gap-2">
+              <Button
+                variant="outline"
+                onClick={prevStep}
+                disabled={currentStep === 0 || isLoading || isSaving}
+                className="border-pink-300 text-pink-700 hover:bg-pink-50"
+              >
+                <ChevronLeft className="mr-2 h-4 w-4" /> Back
+              </Button>
+
+              <Button
+                variant="outline"
+                onClick={saveDraft}
+                disabled={isLoading || isSaving}
+                className="border-pink-300 text-pink-700 hover:bg-pink-50"
+              >
+                <Save className="mr-2 h-4 w-4" />{" "}
+                {isSaving ? "Saving..." : "Save Draft"}
+              </Button>
+            </div>
 
             <Button
               onClick={nextStep}
+              disabled={isLoading || isSaving}
               className="bg-gradient-to-r from-pink-500 to-purple-500 hover:from-pink-600 hover:to-purple-600 text-white"
             >
               {currentStep === steps.length - 1 ? (

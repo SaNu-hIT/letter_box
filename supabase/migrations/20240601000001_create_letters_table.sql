@@ -1,15 +1,16 @@
 -- Create letters table
 CREATE TABLE IF NOT EXISTS letters (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  user_id UUID REFERENCES auth.users(id) NOT NULL,
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
   message TEXT NOT NULL,
   style VARCHAR(50) NOT NULL,
   recipient_name VARCHAR(255) NOT NULL,
   recipient_address TEXT NOT NULL,
   delivery_speed VARCHAR(50) NOT NULL,
   status VARCHAR(50) DEFAULT 'pending',
-  created_at TIMESTAMP WITH TIME ZONE DEFAULT now(),
-  updated_at TIMESTAMP WITH TIME ZONE DEFAULT now()
+  is_draft BOOLEAN DEFAULT true,
+  user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+  updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
 -- Enable RLS
