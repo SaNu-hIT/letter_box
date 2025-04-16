@@ -153,7 +153,7 @@ const LettersReport: React.FC = () => {
         `https://loveletter.com/reply/${letter.id}`,
         {
           margin: 1,
-          width: 100,
+          width: 60,
           color: {
             dark: "#000",
             light: "#FFF",
@@ -219,7 +219,7 @@ const LettersReport: React.FC = () => {
       pdf.line(20, 240, 190, 240); // Bottom separator line
 
       // Add QR code
-      pdf.addImage(qrCodeDataUrl, "PNG", 75, 245, 60, 60);
+      pdf.addImage(qrCodeDataUrl, "PNG", 85, 245, 40, 40);
 
       // Add QR code caption
       pdf.setFont("helvetica", "normal");
@@ -258,7 +258,7 @@ const LettersReport: React.FC = () => {
           `https://loveletter.com/reply/${letter.id}`,
           {
             margin: 1,
-            width: 100,
+            width: 60,
             color: {
               dark: "#000",
               light: "#FFF",
@@ -324,7 +324,7 @@ const LettersReport: React.FC = () => {
         pdf.line(20, 240, 190, 240); // Bottom separator line
 
         // Add QR code
-        pdf.addImage(qrCodeDataUrl, "PNG", 75, 245, 60, 60);
+        pdf.addImage(qrCodeDataUrl, "PNG", 85, 245, 40, 40);
 
         // Add QR code caption
         pdf.setFont("helvetica", "normal");
