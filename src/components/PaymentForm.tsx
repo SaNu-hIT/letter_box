@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../contexts/AuthContext";
 import { motion } from "framer-motion";
@@ -17,6 +17,11 @@ import { CreditCard, Lock, Calendar, CheckCircle } from "lucide-react";
 import { LetterData } from "./LetterCreationForm";
 import { Elements } from "@stripe/react-stripe-js";
 import { stripePromise } from "@/services/stripe";
+import {
+  getPricingOptions,
+  fallbackPricingOptions,
+  PricingOption,
+} from "@/services/pricing";
 
 interface PaymentFormProps {
   letterData: LetterData;
@@ -31,6 +36,12 @@ const PaymentForm: React.FC<PaymentFormProps> = ({
   const { toast } = useToast();
   const { user } = useAuth();
   const [isProcessing, setIsProcessing] = useState(false);
+  const [isLoadingPricing, setIsLoadingPricing] = useState(true);
+  const [pricingOptions, setPricingOptions] = useState<PricingOption[]>(
+    fallbackPricingOptions,
+  );
+  const [selectedPricingOption, setSelectedPricingOption] =
+    useState<PricingOption | null>(null);
   const [paymentData, setPaymentData] = useState({
     cardNumber: "",
     cardName: "",
@@ -38,28 +49,58 @@ const PaymentForm: React.FC<PaymentFormProps> = ({
     cvv: "",
   });
 
+  // Load pricing options from Supabase
+  useEffect(() => {
+    const fetchPricingOptions = async () => {
+      try {
+        setIsLoadingPricing(true);
+        const options = await getPricingOptions();
+        if (options && options.length > 0) {
+          setPricingOptions(options);
+
+          // Find the pricing option that matches the letter's delivery speed
+          const matchingOption = options.find(
+            (option) =>
+              option.delivery_speed === letterData.deliverySpeed ||
+              option.id === letterData.pricingOptionId,
+          );
+
+          if (matchingOption) {
+            setSelectedPricingOption(matchingOption);
+          } else {
+            // Default to the first option if no match is found
+            setSelectedPricingOption(options[0]);
+          }
+        }
+      } catch (error) {
+        console.error("Error fetching pricing options:", error);
+        // Use fallback pricing options
+        const matchingOption = fallbackPricingOptions.find(
+          (option) =>
+            option.delivery_speed === letterData.deliverySpeed ||
+            option.id === letterData.pricingOptionId,
+        );
+
+        if (matchingOption) {
+          setSelectedPricingOption(matchingOption);
+        } else {
+          setSelectedPricingOption(fallbackPricingOptions[0]);
+        }
+      } finally {
+        setIsLoadingPricing(false);
+      }
+    };
+
+    fetchPricingOptions();
+  }, [letterData.deliverySpeed, letterData.pricingOptionId]);
+
   const handleInputChange = (field: string, value: string) => {
     setPaymentData({ ...paymentData, [field]: value });
   };
 
-  // Convert USD to INR (using a fixed exchange rate for now)
+  // Get price based on selected pricing option
   const getPrice = () => {
-    // Base prices in USD
-    let priceUSD = 0;
-    switch (letterData.deliverySpeed) {
-      case "express":
-        priceUSD = 14.99;
-        break;
-      case "overnight":
-        priceUSD = 24.99;
-        break;
-      default: // standard
-        priceUSD = 9.99;
-    }
-
-    // Convert to INR (approximate exchange rate: 1 USD = 75 INR)
-    const exchangeRate = 75;
-    return Math.round(priceUSD * exchangeRate);
+    return selectedPricingOption?.price || 799; // Default to 799 if no option is selected
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -77,6 +118,9 @@ const PaymentForm: React.FC<PaymentFormProps> = ({
         createdAt: new Date().toISOString(),
         isDraft: false,
         userId: user?.id, // Make sure user ID is included
+        pricingOptionId:
+          selectedPricingOption?.id || letterData.pricingOptionId || "standard",
+        price: getPrice(),
       };
 
       // First try to save to Supabase
@@ -234,7 +278,11 @@ const PaymentForm: React.FC<PaymentFormProps> = ({
                       disabled={isProcessing}
                       className="w-full bg-gradient-to-r from-pink-500 to-purple-500 hover:from-pink-600 hover:to-purple-600 text-white"
                     >
-                      {isProcessing ? "Processing..." : <>Pay ₹{getPrice()}</>}
+                      {isProcessing ? (
+                        "Processing..."
+                      ) : (
+                        <>Pay ₹{getPrice().toLocaleString("en-IN")}</>
+                      )}
                     </Button>
                   </div>
 
@@ -257,7 +305,17 @@ const PaymentForm: React.FC<PaymentFormProps> = ({
                     <div className="flex justify-between">
                       <span className="text-gray-600">Delivery:</span>
                       <span className="font-medium capitalize">
-                        {letterData.deliverySpeed}
+                        {selectedPricingOption
+                          ? `${
+                              selectedPricingOption.delivery_speed ===
+                              "standard"
+                                ? "Standard"
+                                : selectedPricingOption.delivery_speed ===
+                                    "express"
+                                  ? "Express"
+                                  : "Priority"
+                            } (${selectedPricingOption.delivery_days})`
+                          : letterData.deliverySpeed}
                       </span>
                     </div>
                     <div className="flex justify-between">
@@ -270,7 +328,9 @@ const PaymentForm: React.FC<PaymentFormProps> = ({
                     <div className="border-t border-gray-200 my-3 pt-3">
                       <div className="flex justify-between font-medium">
                         <span>Total:</span>
-                        <span className="text-pink-700">₹{getPrice()}</span>
+                        <span className="text-pink-700">
+                          ₹{getPrice().toLocaleString("en-IN")}
+                        </span>
                       </div>
                     </div>
                   </div>

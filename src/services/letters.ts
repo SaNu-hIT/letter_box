@@ -1,6 +1,9 @@
 import { supabase } from "./auth";
 import { LetterData } from "@/components/LetterCreationForm";
 
+// Letter status types
+export type LetterStatus = "pending" | "printed" | "sent" | "delivered";
+
 // Save a letter to Supabase
 export async function saveLetter(letterData: LetterData) {
   // Transform the data to match the database schema
@@ -11,7 +14,7 @@ export async function saveLetter(letterData: LetterData) {
     recipient_address: letterData.recipientAddress,
     delivery_speed: letterData.deliverySpeed,
     status: letterData.status || "pending",
-    is_draft: letterData.isDraft || false,
+    is_draft: letterData.isDraft === true, // Ensure boolean value
     user_id: letterData.userId,
     created_at: new Date().toISOString(),
     updated_at: new Date().toISOString(),
@@ -122,4 +125,84 @@ export async function updateLetter(
 
   console.log("Letter updated successfully:", data[0]);
   return data[0];
+}
+
+// Admin Functions
+
+// Get all letters (admin only)
+export async function getAllLetters() {
+  const { data, error } = await supabase
+    .from("letters")
+    .select("*")
+    .order("created_at", { ascending: false });
+
+  if (error) {
+    console.error("Error fetching all letters:", error);
+    throw error;
+  }
+
+  return data;
+}
+
+// Get letters by status (admin only)
+export async function getLettersByStatus(status: LetterStatus) {
+  const { data, error } = await supabase
+    .from("letters")
+    .select("*")
+    .eq("status", status)
+    .order("created_at", { ascending: false });
+
+  if (error) {
+    console.error(`Error fetching ${status} letters:`, error);
+    throw error;
+  }
+
+  return data;
+}
+
+// Update letter status (admin only)
+export async function updateLetterStatus(id: string, status: LetterStatus) {
+  const { data, error } = await supabase
+    .from("letters")
+    .update({ status, updated_at: new Date().toISOString() })
+    .eq("id", id)
+    .select();
+
+  if (error) {
+    console.error("Error updating letter status:", error);
+    throw error;
+  }
+
+  return data[0];
+}
+
+// Get letter metrics (admin only)
+export async function getLetterMetrics() {
+  const { data, error } = await supabase.from("letters").select("status");
+
+  if (error) {
+    console.error("Error fetching letter metrics:", error);
+    throw error;
+  }
+
+  // Calculate counts by status
+  const totalCount = data.length;
+  const pendingCount = data.filter(
+    (letter) => letter.status === "pending",
+  ).length;
+  const printedCount = data.filter(
+    (letter) => letter.status === "printed",
+  ).length;
+  const sentCount = data.filter((letter) => letter.status === "sent").length;
+  const deliveredCount = data.filter(
+    (letter) => letter.status === "delivered",
+  ).length;
+
+  return {
+    total: totalCount,
+    pending: pendingCount,
+    printed: printedCount,
+    sent: sentCount,
+    delivered: deliveredCount,
+  };
 }

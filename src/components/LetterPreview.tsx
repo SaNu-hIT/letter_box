@@ -61,10 +61,10 @@ const LetterPreview = ({
 
   // Format message with line breaks
   const formattedMessage = message.split("\n").map((line, index) => (
-    <React.Fragment key={index}>
+    <span key={index}>
       {line}
       {index < message.split("\n").length - 1 && <br />}
-    </React.Fragment>
+    </span>
   ));
 
   return (

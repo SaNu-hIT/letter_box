@@ -46,11 +46,14 @@ const Signup: React.FC = () => {
       await signUp(email, password);
       // After successful signup, automatically sign in
       await signIn(email, password);
-      // Navigate to home page immediately using replace to prevent back navigation to signup
-      navigate("/", { replace: true });
       // Show success message
       setSuccessMessage("Account created successfully!");
-      window.location.reload();
+      // Navigate to home page immediately using replace to prevent back navigation to signup
+      // Use setTimeout to ensure the success message is seen before redirecting
+      setTimeout(() => {
+        navigate("/", { replace: true });
+        window.location.reload();
+      }, 1000);
     } catch (err: any) {
       setError(err.message || "Failed to sign up");
     } finally {

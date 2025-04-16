@@ -106,7 +106,7 @@ const MyLetters: React.FC = () => {
   };
 
   const editDraft = (id: string) => {
-    navigate(`/create?draftId=${id}`);
+    navigate(`/create`, { state: { draftId: id } });
   };
 
   const getStatusBadge = (status: string) => {
@@ -263,6 +263,32 @@ const LetterCard: React.FC<LetterCardProps> = ({
     return text.length > maxLength
       ? text.substring(0, maxLength) + "..."
       : text;
+  };
+
+  // Helper function to format date
+  const formatDate = (dateString: string) => {
+    return new Date(dateString).toLocaleDateString("en-US", {
+      year: "numeric",
+      month: "short",
+      day: "numeric",
+    });
+  };
+
+  // Helper function to get status badge with appropriate colors
+  const getStatusBadge = (status: string) => {
+    const statusColors: Record<string, string> = {
+      pending: "bg-yellow-100 text-yellow-800",
+      processing: "bg-blue-100 text-blue-800",
+      shipped: "bg-purple-100 text-purple-800",
+      delivered: "bg-green-100 text-green-800",
+      replied: "bg-pink-100 text-pink-800",
+    };
+
+    return (
+      <Badge className={statusColors[status] || "bg-gray-100 text-gray-800"}>
+        {status.charAt(0).toUpperCase() + status.slice(1)}
+      </Badge>
+    );
   };
 
   return (

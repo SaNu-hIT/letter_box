@@ -1,6 +1,7 @@
-import React, { useState } from "react";
-import { useNavigate, Link } from "react-router-dom";
+import React, { useState, useEffect } from "react";
+import { useNavigate, Link, useLocation } from "react-router-dom";
 import { signIn } from "../../services/auth";
+import { useAuth } from "../../contexts/AuthContext";
 import { Button } from "../ui/button";
 import { Input } from "../ui/input";
 import { Label } from "../ui/label";
@@ -20,7 +21,34 @@ const Login: React.FC = () => {
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  const [isAdminLogin, setIsAdminLogin] = useState(false);
   const navigate = useNavigate();
+  const location = useLocation();
+  const { user, isAdmin } = useAuth();
+
+  // Check if we're coming from an admin route
+  useEffect(() => {
+    const adminPath = location.pathname.startsWith("/admin");
+    setIsAdminLogin(adminPath);
+
+    // If user is already logged in and is admin, redirect to admin dashboard
+    if (user && isAdmin && adminPath) {
+      navigate("/admin");
+    }
+    // If user is already logged in and not admin but trying to access admin, show error
+    else if (user && !isAdmin && adminPath) {
+      setError("You do not have admin privileges");
+      navigate("/admin/login");
+    }
+    // If user is already logged in and not on admin path, redirect to home
+    else if (user && !adminPath) {
+      navigate("/");
+    }
+    // If trying to access admin path but not logged in, redirect to admin login
+    else if (!user && adminPath) {
+      navigate("/admin/login");
+    }
+  }, [user, isAdmin, location.pathname, navigate]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -28,10 +56,26 @@ const Login: React.FC = () => {
     setLoading(true);
 
     try {
-      await signIn(email, password);
-      // Navigate directly to home page after successful login
-      // Using replace instead of push to prevent back navigation to login page
-      navigate("/", { replace: true });
+      const { user } = await signIn(email, password);
+
+      // Check if this is an admin login attempt
+      if (isAdminLogin) {
+        // For admin login attempts, we need to check if they have admin privileges
+        if (isAdmin) {
+          navigate("/admin", { replace: true });
+        } else {
+          // If they don't have admin privileges, redirect to admin login with error
+          setError("You do not have admin privileges");
+          navigate("/admin/login", { replace: true });
+          return; // Don't reload the page yet
+        }
+      } else {
+        // Regular user login
+        navigate("/", { replace: true });
+      }
+
+      // Force reload to update UI components that depend on auth state
+      window.location.reload();
     } catch (err: any) {
       setError(err.message || "Failed to sign in");
     } finally {
@@ -50,7 +94,7 @@ const Login: React.FC = () => {
         <Card className="border-none shadow-lg">
           <CardHeader className="space-y-1">
             <CardTitle className="text-2xl font-serif text-pink-800 text-center">
-              Welcome Back
+              {isAdminLogin ? "Admin Login" : "Welcome Back"}
             </CardTitle>
             <CardDescription className="text-center">
               Sign in to your account to continue

@@ -6,11 +6,18 @@ import React, {
   ReactNode,
 } from "react";
 import { User } from "@supabase/supabase-js";
-import { getCurrentUser, signIn, signOut, signUp } from "../services/auth";
+import {
+  getCurrentUser,
+  signIn,
+  signOut,
+  signUp,
+  isAdmin as checkIsAdmin,
+} from "../services/auth";
 
 type AuthContextType = {
   user: User | null;
   loading: boolean;
+  isAdmin: boolean;
   signIn: (email: string, password: string) => Promise<any>;
   signUp: (email: string, password: string) => Promise<any>;
   signOut: () => Promise<boolean>;
@@ -18,7 +25,8 @@ type AuthContextType = {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-export function useAuth() {
+// Create a function component for the hook to make it compatible with Fast Refresh
+function useAuth() {
   const context = useContext(AuthContext);
   if (context === undefined) {
     throw new Error("useAuth must be used within an AuthProvider");
@@ -30,9 +38,10 @@ type AuthProviderProps = {
   children: ReactNode;
 };
 
-export function AuthProvider({ children }: AuthProviderProps) {
+function AuthProvider({ children }: AuthProviderProps) {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
+  const [isAdmin, setIsAdmin] = useState(false);
 
   useEffect(() => {
     // Check for user on initial load
@@ -40,6 +49,11 @@ export function AuthProvider({ children }: AuthProviderProps) {
       try {
         const currentUser = await getCurrentUser();
         setUser(currentUser);
+
+        if (currentUser) {
+          const adminStatus = await checkIsAdmin();
+          setIsAdmin(adminStatus);
+        }
       } catch (error) {
         console.error("Error loading user:", error);
       } finally {
@@ -55,6 +69,12 @@ export function AuthProvider({ children }: AuthProviderProps) {
     try {
       const { user } = await signIn(email, password);
       setUser(user);
+
+      if (user) {
+        const adminStatus = await checkIsAdmin();
+        setIsAdmin(adminStatus);
+      }
+
       return user;
     } catch (error) {
       throw error;
@@ -75,6 +95,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
     try {
       await signOut();
       setUser(null);
+      setIsAdmin(false);
       return true;
     } catch (error) {
       console.error("Error signing out:", error);
@@ -85,6 +106,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
   const value = {
     user,
     loading,
+    isAdmin,
     signIn: handleSignIn,
     signUp: handleSignUp,
     signOut: handleSignOut,
@@ -92,3 +114,5 @@ export function AuthProvider({ children }: AuthProviderProps) {
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }
+
+export { useAuth, AuthProvider };

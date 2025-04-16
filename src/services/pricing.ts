@@ -8,32 +8,35 @@ export interface PricingOption {
   features: string[];
   is_popular?: boolean;
   sort_order?: number;
+  delivery_speed?: string;
+  delivery_days?: string;
 }
 
 // Fetch all pricing options from the database
 export async function getPricingOptions() {
-  const { data, error } = await supabase
-    .from("pricing_options")
-    .select("*")
-    .order("sort_order", { ascending: true });
+  try {
+    const { data, error } = await supabase
+      .from("pricing_options")
+      .select("*")
+      .order("sort_order", { ascending: true });
 
-  if (error) {
+    if (error) throw error;
+
+    return data.map((option) => ({
+      id: option.id,
+      name: option.name,
+      description: option.description,
+      price: option.price,
+      features: option.features || [],
+      is_popular: option.is_popular,
+      sort_order: option.sort_order,
+      delivery_speed: option.delivery_speed,
+      delivery_days: option.delivery_days,
+    }));
+  } catch (error) {
     console.error("Error fetching pricing options:", error);
     throw error;
   }
-
-  // Transform the data to match the frontend schema if needed
-  const transformedData: PricingOption[] = data.map((option) => ({
-    id: option.id,
-    name: option.name,
-    description: option.description,
-    price: option.price,
-    features: option.features || [],
-    is_popular: option.is_popular,
-    sort_order: option.sort_order,
-  }));
-
-  return transformedData;
 }
 
 // Fallback pricing options to use when database fetch fails
@@ -43,13 +46,11 @@ export const fallbackPricingOptions: PricingOption[] = [
     name: "Standard",
     description: "For the patient romantic",
     price: 799, // ₹799
-    features: [
-      "Premium paper",
-      "Standard delivery (5-7 days)",
-      "QR code for reply",
-    ],
+    features: ["Premium paper", "QR code for reply"],
     is_popular: false,
     sort_order: 1,
+    delivery_speed: "standard",
+    delivery_days: "5-7 days",
   },
   {
     id: "premium",
@@ -58,12 +59,13 @@ export const fallbackPricingOptions: PricingOption[] = [
     price: 1199, // ₹1,199
     features: [
       "Luxury paper with scent",
-      "Express delivery (2-3 days)",
       "QR code for reply",
       "Wax seal with rose petals",
     ],
     is_popular: true,
     sort_order: 2,
+    delivery_speed: "express",
+    delivery_days: "2-3 days",
   },
   {
     id: "luxury",
@@ -72,11 +74,12 @@ export const fallbackPricingOptions: PricingOption[] = [
     price: 1999, // ₹1,999
     features: [
       "Handmade artisan paper",
-      "Priority delivery (1-2 days)",
       "QR code for reply",
       "Custom wax seal & gift box",
     ],
     is_popular: false,
     sort_order: 3,
+    delivery_speed: "overnight",
+    delivery_days: "1-2 days",
   },
 ];

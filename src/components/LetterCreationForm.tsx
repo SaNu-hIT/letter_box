@@ -85,28 +85,72 @@ const LetterCreationForm: React.FC<LetterCreationFormProps> = ({
 
   // Load draft if draftId is provided
   useEffect(() => {
-    if (draftId) {
-      loadDraft(draftId);
+    const params = new URLSearchParams(window.location.search);
+    const queryDraftId = params.get("draftId");
+    const locationState = window.history.state?.usr?.draftId;
+
+    const draftToLoad = draftId || queryDraftId || locationState;
+
+    if (draftToLoad) {
+      console.log("Loading draft with ID:", draftToLoad);
+      loadDraft(draftToLoad);
     }
   }, [draftId]);
 
   const loadDraft = async (id: string) => {
     try {
       setIsLoading(true);
-      // This would be replaced with an actual API call
-      // For now, we'll simulate loading from localStorage
+      console.log("Loading draft with ID:", id);
+
+      // First try to load from Supabase
+      if (user) {
+        try {
+          console.log("Attempting to load from Supabase...");
+          const { getUserLetters } = await import("@/services/letters");
+          const userLetters = await getUserLetters(user.id);
+          const supabaseDraft = userLetters.find((letter) => letter.id === id);
+
+          if (supabaseDraft) {
+            console.log("Draft found in Supabase:", supabaseDraft);
+            setLetterData(supabaseDraft);
+            toast({
+              title: "Draft loaded",
+              description:
+                "Your draft has been loaded successfully from database.",
+            });
+            return;
+          }
+        } catch (supabaseError) {
+          console.error("Error loading draft from Supabase:", supabaseError);
+          // Fall back to localStorage if Supabase fails
+        }
+      }
+
+      // If not found in Supabase or there was an error, try localStorage
+      console.log("Attempting to load from localStorage...");
       const savedDrafts = JSON.parse(
         localStorage.getItem("letterDrafts") || "[]",
       );
-      const draft = savedDrafts.find((d: LetterData) => d.id === id);
+      const localDraft = savedDrafts.find((d: LetterData) => d.id === id);
 
-      if (draft) {
-        setLetterData(draft);
+      if (localDraft) {
+        console.log("Draft found in localStorage:", localDraft);
+        setLetterData(localDraft);
         toast({
           title: "Draft loaded",
-          description: "Your draft has been loaded successfully.",
+          description:
+            "Your draft has been loaded successfully from local storage.",
         });
+        return;
       }
+
+      // If we get here, the draft wasn't found
+      console.warn("Draft not found in Supabase or localStorage");
+      toast({
+        title: "Draft not found",
+        description: "We couldn't find the draft you're looking for.",
+        variant: "destructive",
+      });
     } catch (error) {
       console.error("Error loading draft:", error);
       toast({
@@ -144,16 +188,13 @@ const LetterCreationForm: React.FC<LetterCreationFormProps> = ({
       try {
         const { saveLetter, updateLetter } = await import("@/services/letters");
 
-        if (draftToSave.id && draftToSave.id.startsWith("draft-")) {
+        if (!draftToSave.id || draftToSave.id.startsWith("draft-")) {
           // For new drafts or localStorage drafts
           const savedLetter = await saveLetter(draftToSave);
           setLetterData(savedLetter);
         } else {
           // For existing Supabase drafts
-          const updatedLetter = await updateLetter(
-            draftToSave.id!,
-            draftToSave,
-          );
+          const updatedLetter = await updateLetter(draftToSave.id, draftToSave);
           setLetterData(updatedLetter);
         }
       } catch (supabaseError) {
@@ -196,12 +237,41 @@ const LetterCreationForm: React.FC<LetterCreationFormProps> = ({
     }
   };
 
-  const nextStep = () => {
+  const nextStep = async () => {
     if (currentStep < steps.length - 1) {
       setCurrentStep(currentStep + 1);
     } else {
-      // Final step - navigate to payment page
-      navigate("/payment", { state: { letterData } });
+      // Final step - if this is a draft, update it to not be a draft anymore
+      if (letterData.id && letterData.isDraft) {
+        try {
+          setIsSaving(true);
+          const { updateLetter } = await import("@/services/letters");
+          const updatedLetterData = {
+            ...letterData,
+            isDraft: false,
+            status: "pending",
+          };
+
+          const updatedLetter = await updateLetter(
+            letterData.id,
+            updatedLetterData,
+          );
+          // Navigate to payment page with the updated letter data
+          navigate("/payment", { state: { letterData: updatedLetter } });
+        } catch (error) {
+          console.error("Error updating draft status:", error);
+          toast({
+            title: "Error",
+            description: "Failed to update your letter. Please try again.",
+            variant: "destructive",
+          });
+        } finally {
+          setIsSaving(false);
+        }
+      } else {
+        // If it's not a draft, just navigate to payment
+        navigate("/payment", { state: { letterData } });
+      }
     }
   };
 

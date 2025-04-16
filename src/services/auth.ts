@@ -35,6 +35,44 @@ export async function signIn(email: string, password: string) {
   return data;
 }
 
+// Admin credentials
+const ADMIN_USERNAME = "ADMIN_LETTER";
+const ADMIN_PASSWORD = "ADMIN123";
+
+// Sign in as admin with hardcoded credentials
+export async function signInAdmin(username: string, password: string) {
+  // Check if credentials match the hardcoded admin credentials
+  if (username === ADMIN_USERNAME && password === ADMIN_PASSWORD) {
+    // Store admin status in local storage
+    localStorage.setItem("isAdmin", "true");
+    // Also set a session to maintain admin status across page reloads
+    sessionStorage.setItem("adminSession", "true");
+    return true;
+  }
+  return false;
+}
+
+// Check if user is admin
+export async function isAdmin() {
+  // First check if admin is logged in via hardcoded credentials
+  if (localStorage.getItem("isAdmin") === "true") {
+    return true;
+  }
+
+  // Otherwise check via Supabase RPC
+  const { data: user } = await supabase.auth.getUser();
+  if (!user.user) return false;
+
+  const { data, error } = await supabase.rpc("is_admin");
+
+  if (error) {
+    console.error("Error checking admin status:", error);
+    return false;
+  }
+
+  return data;
+}
+
 // Sign out a user
 export async function signOut() {
   const { error } = await supabase.auth.signOut();
