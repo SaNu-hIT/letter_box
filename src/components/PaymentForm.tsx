@@ -42,15 +42,24 @@ const PaymentForm: React.FC<PaymentFormProps> = ({
     setPaymentData({ ...paymentData, [field]: value });
   };
 
+  // Convert USD to INR (using a fixed exchange rate for now)
   const getPrice = () => {
+    // Base prices in USD
+    let priceUSD = 0;
     switch (letterData.deliverySpeed) {
       case "express":
-        return 14.99;
+        priceUSD = 14.99;
+        break;
       case "overnight":
-        return 24.99;
-      default:
-        return 9.99;
+        priceUSD = 24.99;
+        break;
+      default: // standard
+        priceUSD = 9.99;
     }
+
+    // Convert to INR (approximate exchange rate: 1 USD = 75 INR)
+    const exchangeRate = 75;
+    return Math.round(priceUSD * exchangeRate);
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -225,11 +234,7 @@ const PaymentForm: React.FC<PaymentFormProps> = ({
                       disabled={isProcessing}
                       className="w-full bg-gradient-to-r from-pink-500 to-purple-500 hover:from-pink-600 hover:to-purple-600 text-white"
                     >
-                      {isProcessing ? (
-                        "Processing..."
-                      ) : (
-                        <>Pay ${getPrice().toFixed(2)}</>
-                      )}
+                      {isProcessing ? "Processing..." : <>Pay ₹{getPrice()}</>}
                     </Button>
                   </div>
 
@@ -265,9 +270,7 @@ const PaymentForm: React.FC<PaymentFormProps> = ({
                     <div className="border-t border-gray-200 my-3 pt-3">
                       <div className="flex justify-between font-medium">
                         <span>Total:</span>
-                        <span className="text-pink-700">
-                          ${getPrice().toFixed(2)}
-                        </span>
+                        <span className="text-pink-700">₹{getPrice()}</span>
                       </div>
                     </div>
                   </div>

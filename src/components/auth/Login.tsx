@@ -30,7 +30,8 @@ const Login: React.FC = () => {
     try {
       await signIn(email, password);
       // Navigate directly to home page after successful login
-      navigate("/");
+      // Using replace instead of push to prevent back navigation to login page
+      navigate("/", { replace: true });
     } catch (err: any) {
       setError(err.message || "Failed to sign in");
     } finally {

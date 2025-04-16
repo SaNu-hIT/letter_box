@@ -10,8 +10,15 @@ import {
 } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
-import { CheckCircle, Truck, QrCode, ArrowRight, Home } from "lucide-react";
-import { Link } from "react-router-dom";
+import {
+  CheckCircle,
+  Truck,
+  QrCode,
+  ArrowRight,
+  Home,
+  Send,
+} from "lucide-react";
+import { Link, useLocation } from "react-router-dom";
 
 interface ConfirmationProps {
   orderNumber?: string;
@@ -26,6 +33,40 @@ export default function Confirmation({
   estimatedDelivery = "May 15, 2023",
   qrCodeUrl = "https://api.dicebear.com/7.x/avataaars/svg?seed=confirmation",
 }: ConfirmationProps) {
+  const location = useLocation();
+  const letterData = location.state?.letterData;
+
+  // Use data from location state if available
+  const displayRecipientName = letterData?.recipientName || recipientName;
+  const displayOrderNumber = letterData?.id
+    ? `LV-${letterData.id.substring(0, 5)}`
+    : orderNumber;
+
+  // Calculate estimated delivery based on delivery speed
+  const getEstimatedDelivery = () => {
+    if (!letterData) return estimatedDelivery;
+
+    const today = new Date();
+    let deliveryDate = new Date(today);
+
+    switch (letterData.deliverySpeed) {
+      case "overnight":
+        deliveryDate.setDate(today.getDate() + 1);
+        break;
+      case "express":
+        deliveryDate.setDate(today.getDate() + 3);
+        break;
+      default: // standard
+        deliveryDate.setDate(today.getDate() + 7);
+    }
+
+    return deliveryDate.toLocaleDateString("en-US", {
+      year: "numeric",
+      month: "short",
+      day: "numeric",
+    });
+  };
+
   return (
     <div className="min-h-screen bg-gradient-to-b from-pink-50 to-purple-50 flex flex-col items-center justify-center p-4 md:p-8">
       <motion.div
@@ -61,7 +102,7 @@ export default function Confirmation({
                     Order Number
                   </h3>
                   <p className="text-lg font-medium text-purple-800">
-                    {orderNumber}
+                    {displayOrderNumber}
                   </p>
                 </div>
 
@@ -70,7 +111,7 @@ export default function Confirmation({
                     Recipient
                   </h3>
                   <p className="text-lg font-medium text-purple-800">
-                    {recipientName}
+                    {displayRecipientName}
                   </p>
                 </div>
 
@@ -81,7 +122,7 @@ export default function Confirmation({
                   <div className="flex items-center">
                     <Truck className="h-5 w-5 text-pink-600 mr-2" />
                     <p className="text-lg font-medium text-purple-800">
-                      {estimatedDelivery}
+                      {getEstimatedDelivery()}
                     </p>
                   </div>
                 </div>
@@ -169,7 +210,10 @@ export default function Confirmation({
               className="w-full sm:w-auto bg-gradient-to-r from-pink-500 to-purple-500 text-white hover:from-pink-600 hover:to-purple-600"
               asChild
             >
-              <Link to="/letter-creation">Send Another Letter</Link>
+              <Link to="/create">
+                <Send className="h-4 w-4 mr-2" />
+                Send Another Letter
+              </Link>
             </Button>
           </CardFooter>
         </Card>

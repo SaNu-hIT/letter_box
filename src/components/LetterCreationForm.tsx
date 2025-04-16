@@ -10,6 +10,8 @@ import {
   Eye,
   Sparkles,
   Save,
+  Wand2,
+  Loader2,
 } from "lucide-react";
 import { Button } from "./ui/button";
 import { useToast } from "./ui/use-toast";
@@ -66,6 +68,8 @@ const LetterCreationForm: React.FC<LetterCreationFormProps> = ({
 
   const [isSaving, setIsSaving] = useState(false);
   const [isLoading, setIsLoading] = useState(draftId ? true : false);
+  const [isGeneratingAI, setIsGeneratingAI] = useState(false);
+  const [selectedMood, setSelectedMood] = useState("romantic");
 
   const steps = [
     { title: "Write Message", icon: <Heart className="h-5 w-5" /> },
@@ -207,6 +211,50 @@ const LetterCreationForm: React.FC<LetterCreationFormProps> = ({
     }
   };
 
+  const generateAILetter = async () => {
+    setIsGeneratingAI(true);
+    try {
+      // Simulate API call to AI service
+      await new Promise((resolve) => setTimeout(resolve, 2000));
+
+      // Sample AI-generated letters based on mood
+      const aiLetters = {
+        romantic:
+          "Dear beloved,\n\nAs I write these words, my heart beats with a rhythm that only you can inspire. Every moment we've shared has been etched into my soul, creating a tapestry of memories that I cherish deeply.\n\nYour smile is the light that guides me through my darkest days, and your laughter is the melody that brings joy to my world. When our eyes meet, time seems to stand still, and I find myself lost in the depth of your gaze.\n\nI've never been good at expressing my feelings, but I want you to know that you mean everything to me. You are the first thought in my morning and the last whisper in my dreams.\n\nForever yours,",
+        passionate:
+          "My dearest,\n\nThe fire you've ignited in my heart burns with an intensity that consumes my every thought. I find myself breathless at the mere thought of you, captivated by the passion that flows between us like an electric current.\n\nYour touch sends shivers down my spine, awakening desires I never knew existed. The way you move, the sound of your voice, the scent of your skin – everything about you drives me wild with longing.\n\nI crave your presence like the desert craves rain, desperate and unrelenting. When we're apart, I count the seconds until we're together again, until I can lose myself in your embrace once more.\n\nDesperately yours,",
+        poetic:
+          "To the keeper of my heart,\n\nIn the garden of life, you are the rarest bloom,\nA flower whose beauty outshines the midnight moon.\nYour essence, like nectar, sweet and divine,\nIntoxicates my senses, makes stars align.\n\nLike verses of poetry written in the sky,\nOur love story unfolds as days pass by.\nYour soul, a sonnet of infinite grace,\nHolds me captive in its warm embrace.\n\nThrough seasons changing and tides that turn,\nMy devotion to you will eternally burn.\nFor you are my muse, my lyrical dream,\nThe inspiration behind every word I glean.\n\nEternally inspired by you,",
+        playful:
+          "Hey you! Yes, YOU! \n\nGuess what? I've been trying to solve this really complicated math problem lately. It goes something like: U + Me = Happiness. And I think I've finally cracked the solution!\n\nYou know what's funny? I've been making a list of the best things in my life, and somehow your name keeps appearing at the top. Coincidence? I think not!\n\nI'm not saying you're perfect or anything... but if there was an Olympic event for being amazing, you'd definitely win the gold medal. And I'd be cheering the loudest from the stands!\n\nSo here's a virtual high-five, a silly dance, and a whole lot of heart emojis coming your way. Because life's too short not to tell someone they make your heart do the cha-cha slide!\n\nWith a grin and a wink,",
+        nostalgic:
+          "My cherished one,\n\nDo you remember that autumn day when the leaves danced around us like confetti? I close my eyes and I'm there again, feeling the warmth of your hand in mine despite the chill in the air.\n\nTime has a way of flowing like a river, carrying us forward, yet the memories we've created remain like stones in that stream – permanent, unchanging, beautiful in their constancy.\n\nI find myself revisiting the chapters of our story – the coffee shop where we first talked until closing time, the park bench where we shared secrets under starlight, the rainy afternoon when we danced in puddles like children.\n\nThese memories are my most treasured possessions, worn smooth by frequent remembering, glowing with the patina that only time and love can create.\n\nYours, through all our seasons,",
+        heartfelt:
+          "My dearest,\n\nSome feelings are too profound for ordinary words, too vast to be contained in simple sentences. Yet I find myself trying, because what I feel for you deserves to be expressed, even if imperfectly.\n\nYou've touched my life in ways I never thought possible. You've seen me at my worst and loved me anyway. You've celebrated my best and made those moments even brighter. Your kindness, your strength, your beautiful spirit – they've become essential parts of my world.\n\nI want you to know that you are valued beyond measure, loved beyond reason, and appreciated beyond words. The space you occupy in my heart grows larger with each passing day.\n\nThank you for being exactly who you are. Thank you for allowing me to be part of your journey. In this complicated world, my feelings for you are the simplest, truest thing I know.\n\nWith all my heart,",
+      };
+
+      // Set the AI-generated letter based on selected mood
+      setLetterData((prev) => ({
+        ...prev,
+        message: aiLetters[selectedMood] || aiLetters.romantic,
+      }));
+
+      toast({
+        title: "Letter Generated",
+        description: `Your ${selectedMood} love letter has been created. Feel free to edit it further.`,
+      });
+    } catch (error) {
+      console.error("Error generating AI letter:", error);
+      toast({
+        title: "Generation Failed",
+        description: "Failed to generate your letter. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsGeneratingAI(false);
+    }
+  };
+
   const letterStyles = [
     {
       id: "classic",
@@ -277,8 +325,58 @@ const LetterCreationForm: React.FC<LetterCreationFormProps> = ({
                 </h2>
                 <p className="text-gray-600 mt-2">
                   Write your anonymous love letter below. Express your feelings
-                  freely.
+                  freely or use our AI assistant to help you.
                 </p>
+              </div>
+
+              {/* AI Writing Assistant */}
+              <div className="bg-pink-50 p-4 rounded-lg border border-pink-200">
+                <div className="flex items-center gap-2 mb-3">
+                  <Wand2 className="h-5 w-5 text-pink-500" />
+                  <h3 className="font-medium text-pink-800">
+                    AI Writing Assistant
+                  </h3>
+                </div>
+
+                <div className="mb-3">
+                  <Label
+                    htmlFor="mood-select"
+                    className="text-sm text-gray-600 mb-1 block"
+                  >
+                    Select the mood for your letter:
+                  </Label>
+                  <Select value={selectedMood} onValueChange={setSelectedMood}>
+                    <SelectTrigger className="w-full border-pink-200 focus:border-pink-400 focus:ring-pink-400">
+                      <SelectValue placeholder="Select a mood" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="romantic">Romantic</SelectItem>
+                      <SelectItem value="passionate">Passionate</SelectItem>
+                      <SelectItem value="poetic">Poetic</SelectItem>
+                      <SelectItem value="playful">Playful</SelectItem>
+                      <SelectItem value="nostalgic">Nostalgic</SelectItem>
+                      <SelectItem value="heartfelt">Heartfelt</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <Button
+                  onClick={generateAILetter}
+                  disabled={isGeneratingAI}
+                  className="w-full bg-gradient-to-r from-pink-400 to-purple-400 hover:from-pink-500 hover:to-purple-500 text-white"
+                >
+                  {isGeneratingAI ? (
+                    <>
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      Generating...
+                    </>
+                  ) : (
+                    <>
+                      <Wand2 className="mr-2 h-4 w-4" />
+                      Generate Love Letter
+                    </>
+                  )}
+                </Button>
               </div>
 
               <Textarea
@@ -407,7 +505,7 @@ const LetterCreationForm: React.FC<LetterCreationFormProps> = ({
                     <p className="text-gray-600 mt-1">
                       Your letter will be delivered within 5-7 business days.
                     </p>
-                    <p className="text-pink-700 font-medium mt-2">$9.99</p>
+                    <p className="text-pink-700 font-medium mt-2">₹799</p>
                   </div>
                 </div>
 
@@ -427,7 +525,7 @@ const LetterCreationForm: React.FC<LetterCreationFormProps> = ({
                     <p className="text-gray-600 mt-1">
                       Your letter will be delivered within 2-3 business days.
                     </p>
-                    <p className="text-pink-700 font-medium mt-2">$14.99</p>
+                    <p className="text-pink-700 font-medium mt-2">₹1,199</p>
                   </div>
                 </div>
 
@@ -447,7 +545,7 @@ const LetterCreationForm: React.FC<LetterCreationFormProps> = ({
                     <p className="text-gray-600 mt-1">
                       Your letter will be delivered the next business day.
                     </p>
-                    <p className="text-pink-700 font-medium mt-2">$24.99</p>
+                    <p className="text-pink-700 font-medium mt-2">₹1,999</p>
                   </div>
                 </div>
               </RadioGroup>
@@ -511,10 +609,10 @@ const LetterCreationForm: React.FC<LetterCreationFormProps> = ({
                         </p>
                         <p className="text-pink-700 font-medium mt-1">
                           {letterData.deliverySpeed === "standard"
-                            ? "$9.99"
+                            ? "₹799"
                             : letterData.deliverySpeed === "express"
-                              ? "$14.99"
-                              : "$24.99"}
+                              ? "₹1,199"
+                              : "₹1,999"}
                         </p>
                       </div>
                     </CardContent>
@@ -550,6 +648,16 @@ const LetterCreationForm: React.FC<LetterCreationFormProps> = ({
                 <Save className="mr-2 h-4 w-4" />{" "}
                 {isSaving ? "Saving..." : "Save Draft"}
               </Button>
+
+              {currentStep === 0 && (
+                <Button
+                  variant="outline"
+                  onClick={() => navigate("/")}
+                  className="border-pink-300 text-pink-700 hover:bg-pink-50"
+                >
+                  <ChevronLeft className="mr-2 h-4 w-4" /> Home
+                </Button>
+              )}
             </div>
 
             <Button
