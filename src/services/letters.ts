@@ -18,6 +18,8 @@ export async function saveLetter(letterData: LetterData) {
     user_id: letterData.userId,
     created_at: new Date().toISOString(),
     updated_at: new Date().toISOString(),
+    pricing_option_id: letterData.pricingOptionId,
+    price: letterData.price,
   };
 
   console.log("Saving letter with data:", transformedData);
@@ -68,6 +70,8 @@ export async function getUserLetters(userId: string) {
     userId: letter.user_id,
     createdAt: letter.created_at,
     updatedAt: letter.updated_at,
+    pricingOptionId: letter.pricing_option_id,
+    price: letter.price,
   }));
 
   return transformedData;
@@ -109,6 +113,9 @@ export async function updateLetter(
     transformedData.status = letterData.status;
   if (letterData.isDraft !== undefined)
     transformedData.is_draft = letterData.isDraft;
+  if (letterData.pricingOptionId !== undefined)
+    transformedData.pricing_option_id = letterData.pricingOptionId;
+  if (letterData.price !== undefined) transformedData.price = letterData.price;
 
   console.log("Updating letter with data:", transformedData);
 

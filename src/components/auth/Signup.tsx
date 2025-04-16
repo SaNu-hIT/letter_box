@@ -12,10 +12,11 @@ import {
   CardHeader,
   CardTitle,
 } from "../ui/card";
-import { Mail, Lock, UserPlus } from "lucide-react";
+import { Mail, Lock, UserPlus, User } from "lucide-react";
 import { motion } from "framer-motion";
 
 const Signup: React.FC = () => {
+  const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
@@ -40,10 +41,16 @@ const Signup: React.FC = () => {
       return;
     }
 
+    // Validate name is not empty
+    if (!name.trim()) {
+      setError("Name is required");
+      return;
+    }
+
     setLoading(true);
 
     try {
-      await signUp(email, password);
+      await signUp(email, password, name);
       // After successful signup, automatically sign in
       await signIn(email, password);
       // Show success message
@@ -90,6 +97,21 @@ const Signup: React.FC = () => {
               </div>
             )}
             <form onSubmit={handleSubmit} className="space-y-4">
+              <div className="space-y-2">
+                <Label htmlFor="name" className="flex items-center gap-2">
+                  <User className="h-4 w-4 text-pink-500" />
+                  Full Name
+                </Label>
+                <Input
+                  id="name"
+                  type="text"
+                  placeholder="Your Name"
+                  value={name}
+                  onChange={(e) => setName(e.target.value)}
+                  required
+                  className="border-pink-200 focus:border-pink-400 focus:ring-pink-400"
+                />
+              </div>
               <div className="space-y-2">
                 <Label htmlFor="email" className="flex items-center gap-2">
                   <Mail className="h-4 w-4 text-pink-500" />

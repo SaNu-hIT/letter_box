@@ -8,14 +8,46 @@ const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY as string;
 export const supabase = createClient(supabaseUrl, supabaseAnonKey);
 
 // Sign up a new user
-export async function signUp(email: string, password: string) {
+export async function signUp(
+  email: string,
+  password: string,
+  name: string = "",
+) {
+  // First, sign up the user with Supabase Auth
   const { data, error } = await supabase.auth.signUp({
     email,
     password,
+    options: {
+      data: {
+        full_name: name,
+      },
+    },
   });
 
   if (error) {
     throw error;
+  }
+
+  // If user was created successfully, also add to the users table
+  if (data.user) {
+    try {
+      const { error: insertError } = await supabase.from("users").insert([
+        {
+          id: data.user.id,
+          name: name,
+          email: email,
+          created_at: new Date().toISOString(),
+        },
+      ]);
+
+      if (insertError) {
+        console.error("Error adding user to users table:", insertError);
+        // We don't throw here to avoid preventing signup if this fails
+      }
+    } catch (err) {
+      console.error("Error in users table operation:", err);
+      // We don't throw here to avoid preventing signup if this fails
+    }
   }
 
   return data;
@@ -35,21 +67,33 @@ export async function signIn(email: string, password: string) {
   return data;
 }
 
-// Admin credentials
-const ADMIN_USERNAME = "ADMIN_LETTER";
-const ADMIN_PASSWORD = "ADMIN123";
-
-// Sign in as admin with hardcoded credentials
+// Sign in as admin using Supabase RPC
 export async function signInAdmin(username: string, password: string) {
-  // Check if credentials match the hardcoded admin credentials
-  if (username === ADMIN_USERNAME && password === ADMIN_PASSWORD) {
-    // Store admin status in local storage
-    localStorage.setItem("isAdmin", "true");
-    // Also set a session to maintain admin status across page reloads
-    sessionStorage.setItem("adminSession", "true");
-    return true;
+  try {
+    // First try to authenticate via Supabase RPC
+    const { data, error } = await supabase.rpc("verify_admin_credentials", {
+      admin_username: username,
+      admin_password: password,
+    });
+
+    if (error) {
+      console.error("Error verifying admin credentials:", error);
+      return false;
+    }
+
+    if (data === true) {
+      // Store admin status in local storage
+      localStorage.setItem("isAdmin", "true");
+      // Also set a session to maintain admin status across page reloads
+      sessionStorage.setItem("adminSession", "true");
+      return true;
+    }
+
+    return false;
+  } catch (error) {
+    console.error("Error in admin authentication:", error);
+    return false;
   }
-  return false;
 }
 
 // Check if user is admin

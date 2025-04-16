@@ -8,6 +8,8 @@ import {
   Settings,
   LogOut,
   CreditCard,
+  Package,
+  UserCog,
 } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 
@@ -82,10 +84,22 @@ const AdminSidebar: React.FC = () => {
           active={location.pathname === "/admin/users"}
         />
         <SidebarItem
+          icon={<UserCog />}
+          label="User Management"
+          href="/admin/user-management"
+          active={location.pathname === "/admin/user-management"}
+        />
+        <SidebarItem
           icon={<CreditCard />}
           label="Payments"
           href="/admin/payments"
           active={location.pathname === "/admin/payments"}
+        />
+        <SidebarItem
+          icon={<Package />}
+          label="Pricing"
+          href="/admin/pricing"
+          active={location.pathname === "/admin/pricing"}
         />
         <SidebarItem
           icon={<Settings />}

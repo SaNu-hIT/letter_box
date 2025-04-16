@@ -42,9 +42,14 @@ export default function Confirmation({
     ? `LV-${letterData.id.substring(0, 5)}`
     : orderNumber;
 
-  // Calculate estimated delivery based on delivery speed
+  // Calculate estimated delivery based on delivery speed or pricing details
   const getEstimatedDelivery = () => {
     if (!letterData) return estimatedDelivery;
+
+    // If we have pricing details with delivery days, use that
+    if (letterData.pricingDetails?.deliveryDays) {
+      return letterData.pricingDetails.deliveryDays;
+    }
 
     const today = new Date();
     let deliveryDate = new Date(today);
@@ -65,6 +70,27 @@ export default function Confirmation({
       month: "short",
       day: "numeric",
     });
+  };
+
+  // Get package name from pricing details or fallback to delivery speed
+  const getPackageName = () => {
+    if (letterData?.pricingDetails?.name) {
+      return letterData.pricingDetails.name;
+    }
+
+    // Fallback to delivery speed if no pricing details
+    if (letterData?.deliverySpeed) {
+      switch (letterData.deliverySpeed) {
+        case "overnight":
+          return "Priority";
+        case "express":
+          return "Express";
+        default:
+          return "Standard";
+      }
+    }
+
+    return "Standard";
   };
 
   return (
@@ -112,6 +138,13 @@ export default function Confirmation({
                   </h3>
                   <p className="text-lg font-medium text-purple-800">
                     {displayRecipientName}
+                  </p>
+                </div>
+
+                <div>
+                  <h3 className="text-sm font-medium text-gray-500">Package</h3>
+                  <p className="text-lg font-medium text-purple-800">
+                    {getPackageName()}
                   </p>
                 </div>
 

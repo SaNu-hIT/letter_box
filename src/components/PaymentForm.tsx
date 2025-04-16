@@ -58,12 +58,22 @@ const PaymentForm: React.FC<PaymentFormProps> = ({
         if (options && options.length > 0) {
           setPricingOptions(options);
 
-          // Find the pricing option that matches the letter's delivery speed
-          const matchingOption = options.find(
-            (option) =>
-              option.delivery_speed === letterData.deliverySpeed ||
-              option.id === letterData.pricingOptionId,
-          );
+          // Find the pricing option that matches the letter's delivery speed or pricing option ID
+          let matchingOption = null;
+
+          // First try to match by pricingOptionId if it exists
+          if (letterData.pricingOptionId) {
+            matchingOption = options.find(
+              (option) => option.id === letterData.pricingOptionId,
+            );
+          }
+
+          // If no match by ID, try to match by delivery speed
+          if (!matchingOption) {
+            matchingOption = options.find(
+              (option) => option.delivery_speed === letterData.deliverySpeed,
+            );
+          }
 
           if (matchingOption) {
             setSelectedPricingOption(matchingOption);
@@ -75,11 +85,21 @@ const PaymentForm: React.FC<PaymentFormProps> = ({
       } catch (error) {
         console.error("Error fetching pricing options:", error);
         // Use fallback pricing options
-        const matchingOption = fallbackPricingOptions.find(
-          (option) =>
-            option.delivery_speed === letterData.deliverySpeed ||
-            option.id === letterData.pricingOptionId,
-        );
+        let matchingOption = null;
+
+        // First try to match by pricingOptionId if it exists
+        if (letterData.pricingOptionId) {
+          matchingOption = fallbackPricingOptions.find(
+            (option) => option.id === letterData.pricingOptionId,
+          );
+        }
+
+        // If no match by ID, try to match by delivery speed
+        if (!matchingOption) {
+          matchingOption = fallbackPricingOptions.find(
+            (option) => option.delivery_speed === letterData.deliverySpeed,
+          );
+        }
 
         if (matchingOption) {
           setSelectedPricingOption(matchingOption);
@@ -103,6 +123,18 @@ const PaymentForm: React.FC<PaymentFormProps> = ({
     return selectedPricingOption?.price || 799; // Default to 799 if no option is selected
   };
 
+  // Get delivery days based on selected pricing option
+  const getDeliveryDays = () => {
+    return (
+      selectedPricingOption?.delivery_days ||
+      (letterData.deliverySpeed === "standard"
+        ? "5-7 days"
+        : letterData.deliverySpeed === "express"
+          ? "2-3 days"
+          : "1-2 days")
+    );
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsProcessing(true);
@@ -121,6 +153,14 @@ const PaymentForm: React.FC<PaymentFormProps> = ({
         pricingOptionId:
           selectedPricingOption?.id || letterData.pricingOptionId || "standard",
         price: getPrice(),
+        // Include additional pricing details for reference
+        pricingDetails: selectedPricingOption
+          ? {
+              name: selectedPricingOption.name,
+              deliveryDays: selectedPricingOption.delivery_days,
+              deliverySpeed: selectedPricingOption.delivery_speed,
+            }
+          : null,
       };
 
       // First try to save to Supabase
@@ -314,8 +354,8 @@ const PaymentForm: React.FC<PaymentFormProps> = ({
                                     "express"
                                   ? "Express"
                                   : "Priority"
-                            } (${selectedPricingOption.delivery_days})`
-                          : letterData.deliverySpeed}
+                            } (${selectedPricingOption.delivery_days || getDeliveryDays()})`
+                          : `${letterData.deliverySpeed.charAt(0).toUpperCase() + letterData.deliverySpeed.slice(1)} (${getDeliveryDays()})`}
                       </span>
                     </div>
                     <div className="flex justify-between">

@@ -12,6 +12,7 @@ import {
   Save,
   Wand2,
   Loader2,
+  CheckCircle,
 } from "lucide-react";
 import { Button } from "./ui/button";
 import { useToast } from "./ui/use-toast";
@@ -29,6 +30,11 @@ import { Label } from "./ui/label";
 import { Card, CardContent } from "./ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "./ui/tabs";
 import LetterPreview from "./LetterPreview";
+import {
+  getPricingOptions,
+  fallbackPricingOptions,
+  PricingOption,
+} from "@/services/pricing";
 
 interface LetterCreationFormProps {
   onComplete?: (letterData: LetterData) => void;
@@ -47,6 +53,13 @@ export interface LetterData {
   updatedAt?: string;
   userId?: string;
   isDraft?: boolean;
+  pricingOptionId?: string;
+  price?: number;
+  pricingDetails?: {
+    name: string;
+    deliveryDays: string;
+    deliverySpeed: string;
+  };
 }
 
 const LetterCreationForm: React.FC<LetterCreationFormProps> = ({
@@ -64,7 +77,11 @@ const LetterCreationForm: React.FC<LetterCreationFormProps> = ({
     recipientAddress: "",
     deliverySpeed: "standard",
     isDraft: true,
+    pricingOptionId: "", // Will be set after loading pricing options
   });
+
+  const [pricingOptions, setPricingOptions] = useState<PricingOption[]>([]);
+  const [isLoadingPricing, setIsLoadingPricing] = useState(false);
 
   const [isSaving, setIsSaving] = useState(false);
   const [isLoading, setIsLoading] = useState(draftId ? true : false);
@@ -88,6 +105,7 @@ const LetterCreationForm: React.FC<LetterCreationFormProps> = ({
     const params = new URLSearchParams(window.location.search);
     const queryDraftId = params.get("draftId");
     const locationState = window.history.state?.usr?.draftId;
+    const packageId = params.get("package");
 
     const draftToLoad = draftId || queryDraftId || locationState;
 
@@ -95,7 +113,85 @@ const LetterCreationForm: React.FC<LetterCreationFormProps> = ({
       console.log("Loading draft with ID:", draftToLoad);
       loadDraft(draftToLoad);
     }
+
+    // Load pricing options first
+    loadPricingOptions().then(() => {
+      // If a package ID was provided in the URL, find the matching pricing option
+      if (packageId) {
+        // Find the pricing option by name (case insensitive)
+        const matchingOption = pricingOptions.find(
+          (option) => option.name.toLowerCase() === packageId.toLowerCase(),
+        );
+
+        if (matchingOption) {
+          setLetterData((prev) => ({
+            ...prev,
+            pricingOptionId: matchingOption.id,
+            deliverySpeed: matchingOption.delivery_speed || "standard",
+          }));
+        }
+      }
+    });
   }, [draftId]);
+
+  // Load pricing options from the database
+  const loadPricingOptions = async () => {
+    try {
+      setIsLoadingPricing(true);
+      const options = await getPricingOptions();
+      if (options && options.length > 0) {
+        // Sort by sort_order if available
+        const sortedOptions = [...options].sort((a, b) => {
+          if (a.sort_order !== undefined && b.sort_order !== undefined) {
+            return a.sort_order - b.sort_order;
+          }
+          return 0;
+        });
+        setPricingOptions(sortedOptions);
+        console.log("Loaded pricing options:", sortedOptions);
+
+        // Set the default pricing option ID to the first option's ID
+        if (sortedOptions.length > 0 && !letterData.pricingOptionId) {
+          setLetterData((prev) => ({
+            ...prev,
+            pricingOptionId: sortedOptions[0].id,
+            deliverySpeed: sortedOptions[0].delivery_speed || "standard",
+          }));
+        }
+      } else {
+        setPricingOptions(fallbackPricingOptions);
+        // Set the default pricing option ID to the first fallback option's ID
+        if (!letterData.pricingOptionId) {
+          setLetterData((prev) => ({
+            ...prev,
+            pricingOptionId: fallbackPricingOptions[0].id,
+            deliverySpeed:
+              fallbackPricingOptions[0].delivery_speed || "standard",
+          }));
+        }
+      }
+    } catch (error) {
+      console.error("Error fetching pricing options:", error);
+      // Use fallback pricing options
+      setPricingOptions(fallbackPricingOptions);
+      // Set the default pricing option ID to the first fallback option's ID
+      if (!letterData.pricingOptionId) {
+        setLetterData((prev) => ({
+          ...prev,
+          pricingOptionId: fallbackPricingOptions[0].id,
+          deliverySpeed: fallbackPricingOptions[0].delivery_speed || "standard",
+        }));
+      }
+      toast({
+        title: "Notice",
+        description:
+          "Using default pricing. Latest pricing information could not be loaded.",
+        variant: "default",
+      });
+    } finally {
+      setIsLoadingPricing(false);
+    }
+  };
 
   const loadDraft = async (id: string) => {
     try {
@@ -284,8 +380,41 @@ const LetterCreationForm: React.FC<LetterCreationFormProps> = ({
   const generateAILetter = async () => {
     setIsGeneratingAI(true);
     try {
+      // Try to use Supabase Edge Function if available
+      try {
+        const { supabase } = await import("@/services/auth");
+        const { data, error } = await supabase.functions.invoke(
+          "generate-letter",
+          {
+            body: {
+              mood: selectedMood,
+              recipientName: letterData.recipientName || "beloved",
+            },
+          },
+        );
+
+        if (!error && data?.message) {
+          setLetterData((prev) => ({
+            ...prev,
+            message: data.message,
+          }));
+
+          toast({
+            title: "Letter Generated",
+            description: `Your ${selectedMood} love letter has been created. Feel free to edit it further.`,
+          });
+          return;
+        }
+      } catch (edgeFunctionError) {
+        console.log(
+          "Edge function not available, using fallback",
+          edgeFunctionError,
+        );
+      }
+
+      // Fallback to local templates if edge function fails
       // Simulate API call to AI service
-      await new Promise((resolve) => setTimeout(resolve, 2000));
+      await new Promise((resolve) => setTimeout(resolve, 1000));
 
       // Sample AI-generated letters based on mood
       const aiLetters = {
@@ -303,10 +432,19 @@ const LetterCreationForm: React.FC<LetterCreationFormProps> = ({
           "My dearest,\n\nSome feelings are too profound for ordinary words, too vast to be contained in simple sentences. Yet I find myself trying, because what I feel for you deserves to be expressed, even if imperfectly.\n\nYou've touched my life in ways I never thought possible. You've seen me at my worst and loved me anyway. You've celebrated my best and made those moments even brighter. Your kindness, your strength, your beautiful spirit – they've become essential parts of my world.\n\nI want you to know that you are valued beyond measure, loved beyond reason, and appreciated beyond words. The space you occupy in my heart grows larger with each passing day.\n\nThank you for being exactly who you are. Thank you for allowing me to be part of your journey. In this complicated world, my feelings for you are the simplest, truest thing I know.\n\nWith all my heart,",
       };
 
+      // Personalize the letter if recipient name is available
+      let message = aiLetters[selectedMood] || aiLetters.romantic;
+      if (letterData.recipientName) {
+        message = message
+          .replace("beloved", letterData.recipientName)
+          .replace("dearest", letterData.recipientName)
+          .replace("cherished one", letterData.recipientName);
+      }
+
       // Set the AI-generated letter based on selected mood
       setLetterData((prev) => ({
         ...prev,
-        message: aiLetters[selectedMood] || aiLetters.romantic,
+        message: message,
       }));
 
       toast({
@@ -416,7 +554,10 @@ const LetterCreationForm: React.FC<LetterCreationFormProps> = ({
                     Select the mood for your letter:
                   </Label>
                   <Select value={selectedMood} onValueChange={setSelectedMood}>
-                    <SelectTrigger className="w-full border-pink-200 focus:border-pink-400 focus:ring-pink-400">
+                    <SelectTrigger
+                      id="mood-select"
+                      className="w-full border-pink-200 focus:border-pink-400 focus:ring-pink-400"
+                    >
                       <SelectValue placeholder="Select a mood" />
                     </SelectTrigger>
                     <SelectContent>
@@ -552,73 +693,105 @@ const LetterCreationForm: React.FC<LetterCreationFormProps> = ({
                 </p>
               </div>
 
-              <RadioGroup
-                value={letterData.deliverySpeed}
-                onValueChange={(value) =>
-                  handleInputChange("deliverySpeed", value)
-                }
-                className="space-y-4"
-              >
-                <div className="flex items-start space-x-3 p-4 border rounded-lg hover:bg-pink-50 transition-colors cursor-pointer">
-                  <RadioGroupItem
-                    value="standard"
-                    id="standard"
-                    className="mt-1"
-                  />
-                  <div className="flex-1">
-                    <Label
-                      htmlFor="standard"
-                      className="text-lg font-medium cursor-pointer"
-                    >
-                      Standard Delivery
-                    </Label>
-                    <p className="text-gray-600 mt-1">
-                      Your letter will be delivered within 5-7 business days.
-                    </p>
-                    <p className="text-pink-700 font-medium mt-2">₹799</p>
-                  </div>
-                </div>
+              <div className="mb-4">
+                <h3 className="text-lg font-medium mb-2">
+                  Select a Delivery Package
+                </h3>
+                <p className="text-gray-600 mb-4">
+                  Choose the package that best suits your needs.
+                </p>
+              </div>
 
-                <div className="flex items-start space-x-3 p-4 border rounded-lg hover:bg-pink-50 transition-colors cursor-pointer">
-                  <RadioGroupItem
-                    value="express"
-                    id="express"
-                    className="mt-1"
-                  />
-                  <div className="flex-1">
-                    <Label
-                      htmlFor="express"
-                      className="text-lg font-medium cursor-pointer"
-                    >
-                      Express Delivery
-                    </Label>
-                    <p className="text-gray-600 mt-1">
-                      Your letter will be delivered within 2-3 business days.
-                    </p>
-                    <p className="text-pink-700 font-medium mt-2">₹1,199</p>
-                  </div>
+              {isLoadingPricing ? (
+                <div className="flex justify-center items-center py-8">
+                  <Loader2 className="h-6 w-6 text-pink-500 animate-spin" />
+                  <span className="ml-2 text-pink-700">
+                    Loading pricing options...
+                  </span>
                 </div>
+              ) : (
+                <RadioGroup
+                  value={letterData.pricingOptionId || ""}
+                  onValueChange={(value) => {
+                    // Set the pricing option ID
+                    handleInputChange("pricingOptionId", value);
 
-                <div className="flex items-start space-x-3 p-4 border rounded-lg hover:bg-pink-50 transition-colors cursor-pointer">
-                  <RadioGroupItem
-                    value="overnight"
-                    id="overnight"
-                    className="mt-1"
-                  />
-                  <div className="flex-1">
-                    <Label
-                      htmlFor="overnight"
-                      className="text-lg font-medium cursor-pointer"
+                    // Find the selected pricing option to get its delivery speed
+                    const selectedOption = pricingOptions.find(
+                      (option) => option.id === value,
+                    );
+                    if (selectedOption && selectedOption.delivery_speed) {
+                      handleInputChange(
+                        "deliverySpeed",
+                        selectedOption.delivery_speed,
+                      );
+                    } else {
+                      // Fallback for backward compatibility
+                      if (value === "00000000-0000-0000-0000-000000000001")
+                        handleInputChange("deliverySpeed", "standard");
+                      else if (value === "00000000-0000-0000-0000-000000000002")
+                        handleInputChange("deliverySpeed", "express");
+                      else if (value === "00000000-0000-0000-0000-000000000003")
+                        handleInputChange("deliverySpeed", "overnight");
+                      else handleInputChange("deliverySpeed", value);
+                    }
+                  }}
+                  className="space-y-4"
+                >
+                  {pricingOptions.map((option) => (
+                    <div
+                      key={option.id}
+                      className={`flex items-start space-x-3 p-4 border rounded-lg hover:bg-pink-50 transition-colors cursor-pointer ${option.is_popular ? "border-purple-300 bg-purple-50" : ""}`}
                     >
-                      Overnight Delivery
-                    </Label>
-                    <p className="text-gray-600 mt-1">
-                      Your letter will be delivered the next business day.
-                    </p>
-                    <p className="text-pink-700 font-medium mt-2">₹1,999</p>
-                  </div>
-                </div>
-              </RadioGroup>
+                      <RadioGroupItem
+                        value={option.id}
+                        id={option.id}
+                        className="mt-1"
+                      />
+                      <div className="flex-1">
+                        <div className="flex items-center justify-between">
+                          <Label
+                            htmlFor={option.id}
+                            className="text-lg font-medium cursor-pointer"
+                          >
+                            {option.name}
+                            {option.is_popular && (
+                              <span className="ml-2 inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-gradient-to-r from-pink-500 to-purple-500 text-white">
+                                Most Popular
+                              </span>
+                            )}
+                          </Label>
+                        </div>
+                        <p className="text-gray-600 mt-1">
+                          {option.description}
+                        </p>
+                        <div className="mt-2">
+                          {option.delivery_days && (
+                            <p className="text-gray-600 text-sm">
+                              Delivery: {option.delivery_days}
+                            </p>
+                          )}
+                          <p className="text-pink-700 font-medium mt-1">
+                            {new Intl.NumberFormat("en-IN", {
+                              style: "currency",
+                              currency: "INR",
+                              maximumFractionDigits: 0,
+                            }).format(option.price)}
+                          </p>
+                        </div>
+                        <ul className="mt-3 space-y-1">
+                          {option.features.map((feature, i) => (
+                            <li key={i} className="flex items-start text-sm">
+                              <CheckCircle className="h-4 w-4 text-green-500 mr-2 flex-shrink-0 mt-0.5" />
+                              <span>{feature}</span>
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
+                    </div>
+                  ))}
+                </RadioGroup>
+              )}
             </div>
           )}
 
@@ -678,11 +851,28 @@ const LetterCreationForm: React.FC<LetterCreationFormProps> = ({
                           {letterData.deliverySpeed} Delivery
                         </p>
                         <p className="text-pink-700 font-medium mt-1">
-                          {letterData.deliverySpeed === "standard"
-                            ? "₹799"
-                            : letterData.deliverySpeed === "express"
-                              ? "₹1,199"
-                              : "₹1,999"}
+                          {(() => {
+                            // Find the selected pricing option
+                            const selectedOption = pricingOptions.find(
+                              (option) =>
+                                option.id === letterData.pricingOptionId,
+                            );
+
+                            if (selectedOption) {
+                              return new Intl.NumberFormat("en-IN", {
+                                style: "currency",
+                                currency: "INR",
+                                maximumFractionDigits: 0,
+                              }).format(selectedOption.price);
+                            } else {
+                              // Fallback to hardcoded prices if option not found
+                              return letterData.deliverySpeed === "standard"
+                                ? "₹799"
+                                : letterData.deliverySpeed === "express"
+                                  ? "₹1,199"
+                                  : "₹1,999";
+                            }
+                          })()}
                         </p>
                       </div>
                     </CardContent>

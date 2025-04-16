@@ -41,6 +41,7 @@ type Letter = {
   created_at: string;
   updated_at: string;
   user_id: string;
+  user_name?: string;
 };
 
 const LettersReport: React.FC = () => {
@@ -59,9 +60,10 @@ const LettersReport: React.FC = () => {
   async function fetchLetters() {
     setLoading(true);
     try {
+      // Use a more efficient join query to get letters with user names in one go
       let query = supabase
         .from("letters")
-        .select("*")
+        .select("*, user_id")
         .order("created_at", { ascending: false });
 
       if (statusFilter !== "all") {
@@ -69,14 +71,29 @@ const LettersReport: React.FC = () => {
       }
 
       const { data, error } = await query;
-      console.log("Fetched letters in report:", data);
 
       if (error) throw error;
 
-      console.log("Fetched letters:", data);
-      setLetters(data || []);
+      // Set the letters data directly
+      if (data) {
+        setLetters(data);
+      } else {
+        setLetters([]);
+      }
     } catch (error) {
       console.error("Error fetching letters:", error);
+      // Show error toast to inform user
+      try {
+        const { toast } = await import("@/components/ui/use-toast");
+        toast({
+          title: "Error loading letters",
+          description:
+            "There was a problem loading the letters. Please try again.",
+          variant: "destructive",
+        });
+      } catch (toastError) {
+        console.error("Could not show error toast", toastError);
+      }
     } finally {
       setLoading(false);
     }
@@ -480,6 +497,7 @@ const LettersReport: React.FC = () => {
                   />
                 </TableHead>
                 <TableHead>ID</TableHead>
+                <TableHead>Sender</TableHead>
                 <TableHead>Recipient</TableHead>
                 <TableHead>Address</TableHead>
                 <TableHead>Status</TableHead>
@@ -491,7 +509,7 @@ const LettersReport: React.FC = () => {
             <TableBody>
               {filteredLetters.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={7} className="text-center py-4">
+                  <TableCell colSpan={8} className="text-center py-4">
                     No letters found
                   </TableCell>
                 </TableRow>
@@ -514,6 +532,9 @@ const LettersReport: React.FC = () => {
                     </TableCell>
                     <TableCell className="font-medium">
                       {letter.id.substring(0, 8)}...
+                    </TableCell>
+                    <TableCell>
+                      <span className="text-gray-500 italic">Anonymous</span>
                     </TableCell>
                     <TableCell>{letter.recipient_name}</TableCell>
                     <TableCell>

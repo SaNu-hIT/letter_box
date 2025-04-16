@@ -33,7 +33,15 @@ const PricingSection: React.FC<PricingSectionProps> = ({
         setIsLoadingPricing(true);
         const options = await getPricingOptions();
         if (options && options.length > 0) {
-          setPricingOptions(options);
+          // Sort by sort_order if available
+          const sortedOptions = [...options].sort((a, b) => {
+            if (a.sort_order !== undefined && b.sort_order !== undefined) {
+              return a.sort_order - b.sort_order;
+            }
+            return 0;
+          });
+          setPricingOptions(sortedOptions);
+          console.log("Loaded pricing options:", sortedOptions);
         }
       } catch (error) {
         console.error("Error fetching pricing options:", error);
@@ -139,7 +147,9 @@ const PricingSection: React.FC<PricingSectionProps> = ({
                               : option.delivery_speed === "express"
                                 ? "Express"
                                 : "Priority"}{" "}
-                            delivery ({option.delivery_days})
+                            delivery{" "}
+                            {option.delivery_days &&
+                              `(${option.delivery_days})`}
                           </span>
                         </li>
                       )}
@@ -149,7 +159,8 @@ const PricingSection: React.FC<PricingSectionProps> = ({
                       asChild
                     >
                       <Link to={`/create?package=${option.id}`}>
-                        <Heart className="mr-2 h-4 w-4" /> Choose {option.name}
+                        <Heart className="mr-2 h-4 w-4" /> Choose{" "}
+                        {option.name || "Package"}
                       </Link>
                     </Button>
                   </CardContent>

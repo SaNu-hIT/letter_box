@@ -17,6 +17,7 @@ import { format } from "date-fns";
 type User = {
   id: string;
   email: string;
+  name?: string;
   created_at: string;
   last_sign_in_at: string | null;
 };
@@ -33,21 +34,48 @@ const AdminUsersPage: React.FC = () => {
   async function fetchUsers() {
     setLoading(true);
     try {
-      // Directly use the auth admin API to get users
-      const { data: authData, error: authError } =
-        await supabase.auth.admin.listUsers();
+      // Try to use the edge function to get users
+      try {
+        // First try the get_users edge function
+        const { data, error } = await supabase.functions.invoke("get_users", {
+          body: {},
+        });
 
-      if (authError) {
-        console.error("Error fetching users from auth:", authError);
-        throw authError;
+        if (!error && data?.users) {
+          const formattedUsers = data.users.map((user: any) => ({
+            id: user.id,
+            email: user.email,
+            name: user.name || "",
+            created_at: user.created_at,
+            last_sign_in_at: user.last_sign_in_at,
+          }));
+          setUsers(formattedUsers);
+          return;
+        }
+      } catch (edgeFunctionError) {
+        console.log(
+          "Edge function not available, using fallback",
+          edgeFunctionError,
+        );
       }
 
-      if (authData && authData.users) {
-        const formattedUsers = authData.users.map((user) => ({
+      // Fallback to direct database query if edge function fails
+      const { data: usersData, error: usersError } = await supabase
+        .from("users")
+        .select("id, name, email, created_at");
+
+      if (usersError) {
+        console.error("Error fetching users from database:", usersError);
+        throw usersError;
+      }
+
+      if (usersData) {
+        const formattedUsers = usersData.map((user) => ({
           id: user.id,
           email: user.email,
+          name: user.name || "",
           created_at: user.created_at,
-          last_sign_in_at: user.last_sign_in_at,
+          last_sign_in_at: null,
         }));
         setUsers(formattedUsers);
       } else {
@@ -56,6 +84,19 @@ const AdminUsersPage: React.FC = () => {
     } catch (error) {
       console.error("Error fetching users:", error);
       setUsers([]); // Set empty array on error
+
+      // Show error toast
+      try {
+        const { toast } = await import("@/components/ui/use-toast");
+        toast({
+          title: "Error loading users",
+          description:
+            "There was a problem loading the user list. Please try again.",
+          variant: "destructive",
+        });
+      } catch (toastError) {
+        console.error("Could not show error toast", toastError);
+      }
     } finally {
       setLoading(false);
     }
@@ -101,6 +142,7 @@ const AdminUsersPage: React.FC = () => {
                 <TableHeader>
                   <TableRow>
                     <TableHead>ID</TableHead>
+                    <TableHead>Name</TableHead>
                     <TableHead>Email</TableHead>
                     <TableHead>Created At</TableHead>
                     <TableHead>Last Sign In</TableHead>
@@ -109,7 +151,7 @@ const AdminUsersPage: React.FC = () => {
                 <TableBody>
                   {filteredUsers.length === 0 ? (
                     <TableRow>
-                      <TableCell colSpan={4} className="text-center py-4">
+                      <TableCell colSpan={5} className="text-center py-4">
                         No users found
                       </TableCell>
                     </TableRow>
@@ -119,6 +161,7 @@ const AdminUsersPage: React.FC = () => {
                         <TableCell className="font-medium">
                           {user.id.substring(0, 8)}...
                         </TableCell>
+                        <TableCell>{user.name || "N/A"}</TableCell>
                         <TableCell>{user.email}</TableCell>
                         <TableCell>
                           {user.created_at
