@@ -813,10 +813,14 @@ const LetterCreationForm: React.FC<LetterCreationFormProps> = ({
                   <TabsTrigger value="details">Order Details</TabsTrigger>
                 </TabsList>
                 <TabsContent value="preview" className="mt-4">
-                  <div className="flex justify-center">
+                  <div className="flex justify-center w-full">
                     <LetterPreview
                       message={letterData.message}
                       style={letterData.style}
+                      recipientName={letterData.recipientName}
+                      onEdit={(newMessage) =>
+                        handleInputChange("message", newMessage)
+                      }
                     />
                   </div>
                 </TabsContent>

@@ -162,90 +162,16 @@ const LettersReport: React.FC = () => {
     try {
       setGeneratingPdf(true);
 
-      // Create a new PDF document
-      const pdf = new jsPDF();
+      // Import the PDF generation service
+      const { generateLetterPdf: generatePdf } = await import("@/services/pdf");
 
-      // Generate QR code for the letter
-      const qrCodeDataUrl = await QRCode.toDataURL(
-        `https://loveletter.com/reply/${letter.id}`,
-        {
-          margin: 1,
-          width: 60,
-          color: {
-            dark: "#000",
-            light: "#FFF",
-          },
-        },
-      );
-
-      // Add decorative border
-      pdf.setDrawColor(200, 150, 200); // Light purple
-      pdf.setLineWidth(0.5);
-      pdf.rect(10, 10, 190, 277); // Border around the page
-
-      // Add romantic header
-      pdf.setFillColor(250, 240, 245); // Very light pink
-      pdf.rect(10, 10, 190, 30, "F");
-
-      // Add title
-      pdf.setFont("helvetica", "bold");
-      pdf.setTextColor(128, 0, 128); // Purple
-      pdf.setFontSize(24);
-      pdf.text("Love Letter", 105, 25, { align: "center" });
-
-      // Add date
-      pdf.setFont("helvetica", "italic");
-      pdf.setTextColor(100, 100, 100); // Gray
-      pdf.setFontSize(10);
-      pdf.text(
-        `${format(new Date(letter.created_at), "MMMM d, yyyy")}`,
-        105,
-        35,
-        { align: "center" },
-      );
-
-      // Add recipient section
-      pdf.setFont("helvetica", "normal");
-      pdf.setTextColor(0, 0, 0); // Black
-      pdf.setFontSize(12);
-      pdf.text("Dear ", 20, 55);
-      pdf.setFont("helvetica", "bold");
-      pdf.text(letter.recipient_name, 35, 55);
-      pdf.setFont("helvetica", "normal");
-      pdf.text(letter.recipient_address, 20, 65);
-
-      // Add delivery method
-      pdf.setFontSize(10);
-      pdf.setTextColor(100, 100, 100); // Gray
-      pdf.text(`Delivery: ${letter.delivery_speed}`, 20, 80);
-
-      // Add message content with decorative elements
-      pdf.setDrawColor(200, 150, 200); // Light purple
-      pdf.setLineWidth(0.2);
-      pdf.line(20, 90, 190, 90); // Separator line
-
-      pdf.setFont("helvetica", "italic");
-      pdf.setTextColor(0, 0, 0); // Black
-      pdf.setFontSize(12);
-
-      // Handle long messages with text wrapping
-      const splitMessage = pdf.splitTextToSize(letter.message, 150);
-      pdf.text(splitMessage, 30, 105);
-
-      // Add closing line
-      pdf.line(20, 240, 190, 240); // Bottom separator line
-
-      // Add QR code
-      pdf.addImage(qrCodeDataUrl, "PNG", 85, 245, 40, 40);
-
-      // Add QR code caption
-      pdf.setFont("helvetica", "normal");
-      pdf.setFontSize(8);
-      pdf.setTextColor(100, 100, 100); // Gray
-      pdf.text("Scan to reply anonymously", 105, 275, { align: "center" });
-
-      // Save the PDF
-      pdf.save(`Letter-${letter.id.substring(0, 8)}.pdf`);
+      // Use the centralized PDF generation service
+      await generatePdf({
+        message: letter.message,
+        recipientName: letter.recipient_name,
+        style: "romantic", // Default style
+        id: letter.id,
+      });
     } catch (error) {
       console.error("Error generating PDF:", error);
     } finally {
@@ -258,102 +184,36 @@ const LettersReport: React.FC = () => {
     try {
       setGeneratingPdf(true);
 
-      // Create a new PDF document
+      // Import the PDF generation service
+      const { generateLetterPdf: generatePdf } = await import("@/services/pdf");
+
+      // Create a new PDF document for all letters
       const pdf = new jsPDF();
 
-      // Process each letter on a separate page
+      // Process each letter individually
       for (let i = 0; i < letters.length; i++) {
         const letter = letters[i];
 
-        // Add a new page for each letter except the first one
-        if (i > 0) {
-          pdf.addPage();
-        }
-
-        // Generate QR code for the letter
-        const qrCodeDataUrl = await QRCode.toDataURL(
-          `https://loveletter.com/reply/${letter.id}`,
-          {
-            margin: 1,
-            width: 60,
-            color: {
-              dark: "#000",
-              light: "#FFF",
-            },
-          },
-        );
-
-        // Add decorative border
-        pdf.setDrawColor(200, 150, 200); // Light purple
-        pdf.setLineWidth(0.5);
-        pdf.rect(10, 10, 190, 277); // Border around the page
-
-        // Add romantic header
-        pdf.setFillColor(250, 240, 245); // Very light pink
-        pdf.rect(10, 10, 190, 30, "F");
-
-        // Add title
-        pdf.setFont("helvetica", "bold");
-        pdf.setTextColor(128, 0, 128); // Purple
-        pdf.setFontSize(24);
-        pdf.text("Love Letter", 105, 25, { align: "center" });
-
-        // Add date
-        pdf.setFont("helvetica", "italic");
-        pdf.setTextColor(100, 100, 100); // Gray
-        pdf.setFontSize(10);
-        pdf.text(
-          `${format(new Date(letter.created_at), "MMMM d, yyyy")}`,
-          105,
-          35,
-          { align: "center" },
-        );
-
-        // Add recipient section
-        pdf.setFont("helvetica", "normal");
-        pdf.setTextColor(0, 0, 0); // Black
-        pdf.setFontSize(12);
-        pdf.text("Dear ", 20, 55);
-        pdf.setFont("helvetica", "bold");
-        pdf.text(letter.recipient_name, 35, 55);
-        pdf.setFont("helvetica", "normal");
-        pdf.text(letter.recipient_address, 20, 65);
-
-        // Add delivery method
-        pdf.setFontSize(10);
-        pdf.setTextColor(100, 100, 100); // Gray
-        pdf.text(`Delivery: ${letter.delivery_speed}`, 20, 80);
-
-        // Add message content with decorative elements
-        pdf.setDrawColor(200, 150, 200); // Light purple
-        pdf.setLineWidth(0.2);
-        pdf.line(20, 90, 190, 90); // Separator line
-
-        pdf.setFont("helvetica", "italic");
-        pdf.setTextColor(0, 0, 0); // Black
-        pdf.setFontSize(12);
-
-        // Handle long messages with text wrapping
-        const splitMessage = pdf.splitTextToSize(letter.message, 150);
-        pdf.text(splitMessage, 30, 105);
-
-        // Add closing line
-        pdf.line(20, 240, 190, 240); // Bottom separator line
-
-        // Add QR code
-        pdf.addImage(qrCodeDataUrl, "PNG", 85, 245, 40, 40);
-
-        // Add QR code caption
-        pdf.setFont("helvetica", "normal");
-        pdf.setFontSize(8);
-        pdf.setTextColor(100, 100, 100); // Gray
-        pdf.text("Scan to reply anonymously", 105, 275, { align: "center" });
+        // For each letter, generate a separate PDF file
+        await generatePdf({
+          message: letter.message,
+          recipientName: letter.recipient_name,
+          style: "romantic", // Default style
+          id: letter.id,
+        });
       }
 
-      // Save the PDF
-      pdf.save("Love-Letters.pdf");
+      toast({
+        title: "PDFs Generated",
+        description: `${letters.length} letter PDFs have been generated and downloaded.`,
+      });
     } catch (error) {
       console.error("Error generating multiple PDFs:", error);
+      toast({
+        title: "Error",
+        description: "There was a problem generating the PDFs.",
+        variant: "destructive",
+      });
     } finally {
       setGeneratingPdf(false);
     }

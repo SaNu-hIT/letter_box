@@ -43,8 +43,8 @@ const AdminLogin: React.FC = () => {
         sessionStorage.setItem("adminSession", "true");
         localStorage.setItem("isAdmin", "true");
 
-        // Force reload first to update auth state
-        window.location.href = "/admin";
+        // Use navigate instead of direct location change
+        navigate("/admin");
       } else {
         setError("Invalid admin credentials");
       }

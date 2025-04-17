@@ -5,10 +5,7 @@ import { tempo } from "tempo-devtools/dist/vite";
 
 // https://vitejs.dev/config/
 export default defineConfig({
-  base:
-    process.env.NODE_ENV === "development"
-      ? "/"
-      : process.env.VITE_BASE_PATH || "/",
+  base: "/", // Always use root path for all environments
   optimizeDeps: {
     entries: ["src/main.tsx", "src/tempobook/**/*"],
   },
@@ -27,5 +24,14 @@ export default defineConfig({
   server: {
     // @ts-ignore
     allowedHosts: true,
+    // Handle SPA routing during development
+    historyApiFallback: true,
+  },
+  build: {
+    rollupOptions: {
+      output: {
+        manualChunks: undefined,
+      },
+    },
   },
 });
