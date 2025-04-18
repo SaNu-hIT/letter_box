@@ -12,7 +12,7 @@ import {
 } from "./ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "./ui/tabs";
 import { Badge } from "./ui/badge";
-import { Edit, Trash2, Send, Eye, Heart } from "lucide-react";
+import { Edit, Trash2, Send, Eye, Heart, Reply } from "lucide-react";
 import { LetterData } from "./LetterCreationForm";
 
 const MyLetters: React.FC = () => {
@@ -109,6 +109,10 @@ const MyLetters: React.FC = () => {
     navigate(`/create`, { state: { draftId: id } });
   };
 
+  const sendReply = (id: string) => {
+    navigate(`/reply/${id}`);
+  };
+
   const getStatusBadge = (status: string) => {
     const statusColors: Record<string, string> = {
       pending: "bg-yellow-100 text-yellow-800",
@@ -196,6 +200,7 @@ const MyLetters: React.FC = () => {
                     letter={letter}
                     onDelete={deleteLetter}
                     onEdit={editDraft}
+                    onReply={sendReply}
                   />
                 ))}
               </div>
@@ -211,6 +216,7 @@ const MyLetters: React.FC = () => {
                       letter={letter}
                       onDelete={deleteLetter}
                       onEdit={editDraft}
+                      onReply={sendReply}
                     />
                   ))}
               </div>
@@ -226,6 +232,7 @@ const MyLetters: React.FC = () => {
                       letter={letter}
                       onDelete={deleteLetter}
                       onEdit={editDraft}
+                      onReply={sendReply}
                     />
                   ))}
               </div>
@@ -250,12 +257,14 @@ interface LetterCardProps {
   letter: LetterData;
   onDelete: (id: string) => void;
   onEdit: (id: string) => void;
+  onReply?: (id: string) => void;
 }
 
 const LetterCard: React.FC<LetterCardProps> = ({
   letter,
   onDelete,
   onEdit,
+  onReply,
 }) => {
   const navigate = useNavigate();
   const truncateText = (text: string, maxLength: number) => {
@@ -343,14 +352,24 @@ const LetterCard: React.FC<LetterCardProps> = ({
           </>
         ) : (
           <>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => navigate(`/track?code=${letter.id}`)}
-              className="text-purple-700 border-purple-200 hover:bg-purple-50"
-            >
-              <Eye className="mr-1 h-4 w-4" /> Track
-            </Button>
+            <div className="flex gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => navigate(`/track?code=${letter.id}`)}
+                className="text-purple-700 border-purple-200 hover:bg-purple-50"
+              >
+                <Eye className="mr-1 h-4 w-4" /> Track
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => onReply && onReply(letter.id || "")}
+                className="text-pink-700 border-pink-200 hover:bg-pink-50"
+              >
+                <Reply className="mr-1 h-4 w-4" /> Reply
+              </Button>
+            </div>
             <Button
               variant="ghost"
               size="sm"

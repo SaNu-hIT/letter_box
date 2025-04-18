@@ -260,13 +260,51 @@ const LetterCreationForm: React.FC<LetterCreationFormProps> = ({
   };
 
   const saveDraft = async () => {
+    // Allow anonymous users to save drafts
     if (!user) {
-      toast({
-        title: "Authentication required",
-        description: "Please log in to save drafts.",
-        variant: "destructive",
-      });
-      return;
+      try {
+        setIsSaving(true);
+        const draftToSave = {
+          ...letterData,
+          id: letterData.id || `draft-${Date.now()}`,
+          updatedAt: new Date().toISOString(),
+          createdAt: letterData.createdAt || new Date().toISOString(),
+          isDraft: true,
+        };
+
+        // Save to localStorage for anonymous users
+        const savedDrafts = JSON.parse(
+          localStorage.getItem("letterDrafts") || "[]",
+        );
+        const existingDraftIndex = savedDrafts.findIndex(
+          (d) => d.id === draftToSave.id,
+        );
+
+        if (existingDraftIndex >= 0) {
+          savedDrafts[existingDraftIndex] = draftToSave;
+        } else {
+          savedDrafts.push(draftToSave);
+        }
+
+        localStorage.setItem("letterDrafts", JSON.stringify(savedDrafts));
+        setLetterData(draftToSave);
+
+        toast({
+          title: "Draft saved",
+          description: "Your letter has been saved as a draft in your browser.",
+        });
+        setIsSaving(false);
+        return;
+      } catch (error) {
+        console.error("Error saving anonymous draft:", error);
+        toast({
+          title: "Error",
+          description: "Failed to save your draft. Please try again.",
+          variant: "destructive",
+        });
+        setIsSaving(false);
+        return;
+      }
     }
 
     try {
@@ -337,23 +375,56 @@ const LetterCreationForm: React.FC<LetterCreationFormProps> = ({
     if (currentStep < steps.length - 1) {
       setCurrentStep(currentStep + 1);
     } else {
-      // Final step - if this is a draft, update it to not be a draft anymore
+      // Final step - handle both authenticated and anonymous users
       if (letterData.id && letterData.isDraft) {
         try {
           setIsSaving(true);
-          const { updateLetter } = await import("@/services/letters");
-          const updatedLetterData = {
-            ...letterData,
-            isDraft: false,
-            status: "pending",
-          };
 
-          const updatedLetter = await updateLetter(
-            letterData.id,
-            updatedLetterData,
-          );
-          // Navigate to payment page with the updated letter data
-          navigate("/payment", { state: { letterData: updatedLetter } });
+          // For authenticated users, update in database
+          if (user) {
+            const { updateLetter } = await import("@/services/letters");
+            const updatedLetterData = {
+              ...letterData,
+              isDraft: false,
+              status: "pending",
+            };
+
+            const updatedLetter = await updateLetter(
+              letterData.id,
+              updatedLetterData,
+            );
+            // Navigate to payment page with the updated letter data
+            navigate("/payment", { state: { letterData: updatedLetter } });
+          } else {
+            // For anonymous users, handle locally
+            const updatedLetterData = {
+              ...letterData,
+              isDraft: false,
+              status: "pending",
+              updatedAt: new Date().toISOString(),
+            };
+
+            // Update localStorage if needed
+            if (letterData.id.startsWith("draft-")) {
+              const savedDrafts = JSON.parse(
+                localStorage.getItem("letterDrafts") || "[]",
+              );
+              const existingDraftIndex = savedDrafts.findIndex(
+                (d) => d.id === letterData.id,
+              );
+
+              if (existingDraftIndex >= 0) {
+                savedDrafts[existingDraftIndex] = updatedLetterData;
+                localStorage.setItem(
+                  "letterDrafts",
+                  JSON.stringify(savedDrafts),
+                );
+              }
+            }
+
+            // Navigate to payment page with the updated letter data
+            navigate("/payment", { state: { letterData: updatedLetterData } });
+          }
         } catch (error) {
           console.error("Error updating draft status:", error);
           toast({

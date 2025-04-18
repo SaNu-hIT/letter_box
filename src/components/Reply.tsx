@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { useParams } from "react-router-dom";
+import { useParams, useNavigate, useLocation } from "react-router-dom";
 import { Button } from "./ui/button";
 import { Textarea } from "./ui/textarea";
 import {
@@ -9,9 +9,10 @@ import {
   CardTitle,
   CardFooter,
 } from "./ui/card";
-import { Loader2, Send, Heart } from "lucide-react";
+import { Loader2, Send, Heart, LogIn } from "lucide-react";
 import { useToast } from "./ui/use-toast";
 import { supabase } from "@/services/auth";
+import { useAuth } from "@/contexts/AuthContext";
 
 const Reply: React.FC = () => {
   const { id } = useParams<{ id: string }>();
@@ -21,8 +22,17 @@ const Reply: React.FC = () => {
   const [originalLetter, setOriginalLetter] = useState<any>(null);
   const [isLoadingLetter, setIsLoadingLetter] = useState(true);
   const { toast } = useToast();
+  const { user } = useAuth();
+  const navigate = useNavigate();
+  const location = useLocation();
 
   useEffect(() => {
+    // Check if user is logged in, if not redirect to login
+    if (!user) {
+      navigate("/login", { state: { returnUrl: `/reply/${id}` } });
+      return;
+    }
+
     // Fetch the original letter to display recipient name
     const fetchLetter = async () => {
       if (!id) return;
@@ -53,10 +63,20 @@ const Reply: React.FC = () => {
     };
 
     fetchLetter();
-  }, [id, toast]);
+  }, [id, toast, user, navigate]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+
+    if (!user) {
+      toast({
+        title: "Authentication required",
+        description: "Please log in to send a reply.",
+        variant: "destructive",
+      });
+      navigate("/login", { state: { returnUrl: `/reply/${id}` } });
+      return;
+    }
 
     if (!message.trim()) {
       toast({
@@ -76,6 +96,9 @@ const Reply: React.FC = () => {
           letter_id: id,
           message: message,
           created_at: new Date().toISOString(),
+          user_id: user.id,
+          sender_name: user.user_metadata?.full_name || "Anonymous",
+          is_read: false,
         },
       ]);
 
@@ -86,8 +109,13 @@ const Reply: React.FC = () => {
       setIsSent(true);
       toast({
         title: "Reply sent",
-        description: "Your anonymous reply has been sent successfully!",
+        description: "Your reply has been sent successfully!",
       });
+
+      // After 3 seconds, redirect to MyLetters page to show the replies tab
+      setTimeout(() => {
+        navigate("/my-letters", { state: { activeTab: "replies" } });
+      }, 3000);
     } catch (error) {
       console.error("Error sending reply:", error);
       toast({
@@ -140,7 +168,7 @@ const Reply: React.FC = () => {
                 <Button
                   type="submit"
                   className="w-full bg-gradient-to-r from-pink-500 to-purple-500 hover:from-pink-600 hover:to-purple-600"
-                  disabled={isLoading}
+                  disabled={isLoading || !user}
                 >
                   {isLoading ? (
                     <>
@@ -165,16 +193,33 @@ const Reply: React.FC = () => {
                 <h3 className="text-xl font-medium text-gray-900 mb-2">
                   Reply Sent Successfully!
                 </h3>
-                <p className="text-gray-600">
-                  Your anonymous reply has been delivered. Thank you for using
-                  our service.
+                <p className="text-gray-600 mb-4">
+                  Your reply has been delivered. Thank you for using our
+                  service.
+                </p>
+                <p className="text-sm text-pink-600">
+                  Redirecting to your letters page...
                 </p>
               </div>
             )}
           </CardContent>
           <CardFooter className="bg-gray-50 text-center text-xs text-gray-500 py-3">
-            Your identity remains anonymous. We never share your personal
-            information.
+            {!user && (
+              <div className="w-full text-center mb-2">
+                <Button
+                  variant="outline"
+                  className="text-pink-600 hover:text-pink-700"
+                  onClick={() =>
+                    navigate("/login", { state: { returnUrl: `/reply/${id}` } })
+                  }
+                >
+                  <LogIn className="h-4 w-4 mr-2" />
+                  Log in to send a reply
+                </Button>
+              </div>
+            )}
+            Your identity remains private. We never share your personal
+            information with recipients.
           </CardFooter>
         </Card>
       </div>
