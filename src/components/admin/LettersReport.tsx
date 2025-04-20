@@ -27,7 +27,8 @@ import {
   DialogTrigger,
 } from "../ui/dialog";
 import { Label } from "../ui/label";
-import { Printer } from "lucide-react";
+import { Printer, Eye } from "lucide-react";
+import LetterDetailsModal from "./LetterDetailsModal";
 import jsPDF from "jspdf";
 import QRCode from "qrcode";
 
@@ -52,6 +53,8 @@ const LettersReport: React.FC = () => {
   const [selectedLetters, setSelectedLetters] = useState<string[]>([]);
   const [bulkStatusValue, setBulkStatusValue] = useState<string>("pending");
   const [generatingPdf, setGeneratingPdf] = useState<boolean>(false);
+  const [viewingLetterId, setViewingLetterId] = useState<string | null>(null);
+  const [isDetailsModalOpen, setIsDetailsModalOpen] = useState<boolean>(false);
 
   useEffect(() => {
     fetchLetters();
@@ -438,14 +441,26 @@ const LettersReport: React.FC = () => {
                             <SelectItem value="delivered">Delivered</SelectItem>
                           </SelectContent>
                         </Select>
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          onClick={() => generateLetterPdf(letter)}
-                          disabled={generatingPdf}
-                        >
-                          <Printer className="h-4 w-4" />
-                        </Button>
+                        <div className="flex gap-1">
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => {
+                              setViewingLetterId(letter.id);
+                              setIsDetailsModalOpen(true);
+                            }}
+                          >
+                            <Eye className="h-4 w-4" />
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => generateLetterPdf(letter)}
+                            disabled={generatingPdf}
+                          >
+                            <Printer className="h-4 w-4" />
+                          </Button>
+                        </div>
                       </div>
                     </TableCell>
                   </TableRow>
@@ -455,6 +470,16 @@ const LettersReport: React.FC = () => {
           </Table>
         </div>
       )}
+
+      {/* Letter Details Modal */}
+      <LetterDetailsModal
+        isOpen={isDetailsModalOpen}
+        onClose={() => {
+          setIsDetailsModalOpen(false);
+          setViewingLetterId(null);
+        }}
+        letterId={viewingLetterId}
+      />
     </div>
   );
 };
