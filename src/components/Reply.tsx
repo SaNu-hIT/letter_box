@@ -8,8 +8,9 @@ import {
   CardHeader,
   CardTitle,
   CardFooter,
+  CardDescription,
 } from "./ui/card";
-import { Loader2, Send, Heart, LogIn } from "lucide-react";
+import { Loader2, Send, Heart, LogIn, Mail, ArrowLeft } from "lucide-react";
 import { useToast } from "./ui/use-toast";
 import { supabase } from "@/services/auth";
 import { useAuth } from "@/contexts/AuthContext";
@@ -28,7 +29,7 @@ const Reply: React.FC = () => {
 
   useEffect(() => {
     // Check if user is logged in, if not redirect to login
-    if (!user) {
+    if (!user && !id) {
       navigate("/login", { state: { returnUrl: `/reply/${id}` } });
       return;
     }
@@ -144,44 +145,77 @@ const Reply: React.FC = () => {
           <CardHeader className="bg-gradient-to-r from-pink-100 to-purple-100">
             <CardTitle className="text-center text-pink-800 flex items-center justify-center">
               <Heart className="h-5 w-5 mr-2 text-pink-500" />
-              Reply Anonymously
+              Write Your Reply
             </CardTitle>
+            <CardDescription className="text-center text-pink-600">
+              Responding to Letter #{id}
+            </CardDescription>
           </CardHeader>
           <CardContent className="pt-6">
             {!isSent ? (
-              <form onSubmit={handleSubmit}>
-                <div className="mb-4">
-                  <p className="text-gray-600 mb-2">
-                    Send an anonymous reply to{" "}
-                    <span className="font-medium text-pink-700">
-                      {originalLetter?.recipientName || "your admirer"}
-                    </span>
-                  </p>
+              <form onSubmit={handleSubmit} className="space-y-6">
+                <div className="bg-pink-50 p-4 rounded-md mb-4 flex items-start">
+                  <Mail className="h-5 w-5 text-pink-500 mr-3 mt-1 flex-shrink-0" />
+                  <div>
+                    <h3 className="font-medium text-pink-800 mb-1">
+                      Letter Information
+                    </h3>
+                    <p className="text-sm text-gray-600">
+                      You are replying to letter with ID:{" "}
+                      <span className="font-medium text-pink-700">{id}</span>
+                    </p>
+                    {originalLetter && (
+                      <p className="text-sm text-gray-600 mt-1">
+                        Recipient:{" "}
+                        <span className="font-medium text-pink-700">
+                          {originalLetter?.recipientName || "Anonymous"}
+                        </span>
+                      </p>
+                    )}
+                  </div>
+                </div>
+
+                <div>
+                  <h3 className="font-medium text-gray-700 mb-2">
+                    Your Message
+                  </h3>
                   <Textarea
-                    placeholder="Write your reply here..."
+                    placeholder="Write your heartfelt reply here..."
                     className="min-h-[200px] border-pink-200 focus:border-pink-400 focus:ring-pink-400"
                     value={message}
                     onChange={(e) => setMessage(e.target.value)}
                     disabled={isLoading}
                   />
                 </div>
-                <Button
-                  type="submit"
-                  className="w-full bg-gradient-to-r from-pink-500 to-purple-500 hover:from-pink-600 hover:to-purple-600"
-                  disabled={isLoading || !user}
-                >
-                  {isLoading ? (
-                    <>
-                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                      Sending...
-                    </>
-                  ) : (
-                    <>
-                      <Send className="mr-2 h-4 w-4" />
-                      Send Reply
-                    </>
-                  )}
-                </Button>
+
+                <div className="flex space-x-3 pt-2">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    className="flex-1 border-pink-200 text-pink-600 hover:bg-pink-50"
+                    onClick={() => navigate(-1)}
+                  >
+                    <ArrowLeft className="mr-2 h-4 w-4" />
+                    Back
+                  </Button>
+                  <Button
+                    type="submit"
+                    className="flex-1 bg-gradient-to-r from-pink-500 to-purple-500 hover:from-pink-600 hover:to-purple-600"
+                    disabled={isLoading || !user}
+                  >
+                    {isLoading ? (
+                      <>
+                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                        Sending...
+                      </>
+                    ) : (
+                      <>
+                        <Send className="mr-2 h-4 w-4" />
+                        Send Reply
+                      </>
+                    )}
+                  </Button>
+                </div>
               </form>
             ) : (
               <div className="text-center py-6">

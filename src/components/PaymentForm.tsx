@@ -15,8 +15,7 @@ import {
 import { useToast } from "@/components/ui/use-toast";
 import { CreditCard, Lock, Calendar, CheckCircle } from "lucide-react";
 import { LetterData } from "./LetterCreationForm";
-import { Elements } from "@stripe/react-stripe-js";
-import { stripePromise } from "@/services/stripe";
+
 import {
   getPricingOptions,
   fallbackPricingOptions,

@@ -1,9 +1,2 @@
-import { loadStripe } from "@stripe/stripe-js";
-
-// Make sure to call `loadStripe` outside of a component's render to avoid
-// recreating the `Stripe` object on every render.
-const stripePromise = loadStripe(
-  import.meta.env.VITE_STRIPE_PUBLIC_KEY as string,
-);
-
-export { stripePromise };
+// This file is intentionally empty as Stripe integration has been removed
+// The mock payment processing is used instead

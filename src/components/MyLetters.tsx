@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 import { useAuth } from "../contexts/AuthContext";
 import { useToast } from "./ui/use-toast";
+import LetterReplies from "./LetterReplies";
 import { Button } from "./ui/button";
 import {
   Card,
@@ -12,19 +13,34 @@ import {
 } from "./ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "./ui/tabs";
 import { Badge } from "./ui/badge";
-import { Edit, Trash2, Send, Eye, Heart, Reply } from "lucide-react";
+import {
+  Edit,
+  Trash2,
+  Send,
+  Eye,
+  Heart,
+  Reply,
+  MessageCircle,
+} from "lucide-react";
 import { LetterData } from "./LetterCreationForm";
 
 const MyLetters: React.FC = () => {
   const { user } = useAuth();
   const { toast } = useToast();
   const navigate = useNavigate();
+  const location = useLocation();
   const [letters, setLetters] = useState<LetterData[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [activeTab, setActiveTab] = useState("all");
 
   useEffect(() => {
     loadLetters();
-  }, [user]);
+
+    // Check if we should show the replies tab
+    if (location.state?.activeTab) {
+      setActiveTab(location.state.activeTab);
+    }
+  }, [user, location.state]);
 
   const loadLetters = async () => {
     try {
@@ -160,11 +176,12 @@ const MyLetters: React.FC = () => {
     <div className="container mx-auto p-6 max-w-4xl my-8">
       <h1 className="text-3xl font-serif text-pink-800 mb-6">My Letters</h1>
 
-      <Tabs defaultValue="all" className="w-full">
-        <TabsList className="grid w-full grid-cols-3 mb-8">
+      <Tabs defaultValue={activeTab} className="w-full">
+        <TabsList className="grid w-full grid-cols-4 mb-8">
           <TabsTrigger value="all">All Letters</TabsTrigger>
           <TabsTrigger value="drafts">Drafts</TabsTrigger>
           <TabsTrigger value="sent">Sent Letters</TabsTrigger>
+          <TabsTrigger value="replies">Replies</TabsTrigger>
         </TabsList>
 
         {isLoading ? (
@@ -236,6 +253,9 @@ const MyLetters: React.FC = () => {
                     />
                   ))}
               </div>
+            </TabsContent>
+            <TabsContent value="replies" className="mt-0">
+              <LetterReplies />
             </TabsContent>
           </>
         )}
@@ -368,6 +388,14 @@ const LetterCard: React.FC<LetterCardProps> = ({
                 className="text-pink-700 border-pink-200 hover:bg-pink-50"
               >
                 <Reply className="mr-1 h-4 w-4" /> Reply
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => navigate(`/letter-replies/${letter.id}`)}
+                className="text-purple-700 border-purple-200 hover:bg-purple-50"
+              >
+                <MessageCircle className="mr-1 h-4 w-4" /> View Replies
               </Button>
             </div>
             <Button

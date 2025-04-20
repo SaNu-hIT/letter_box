@@ -7,11 +7,22 @@ const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY as string;
 
 export const supabase = createClient(supabaseUrl, supabaseAnonKey);
 
+// Address interface for user addresses
+export interface UserAddress {
+  address: string;
+  city: string;
+  state: string;
+  zip: string;
+  country: string;
+  is_default?: boolean;
+}
+
 // Sign up a new user
 export async function signUp(
   email: string,
   password: string,
   name: string = "",
+  address?: UserAddress,
 ) {
   // First, sign up the user with Supabase Auth
   const { data, error } = await supabase.auth.signUp({
@@ -44,6 +55,44 @@ export async function signUp(
         console.error("Error adding user to users table:", insertError);
         // We don't throw here to avoid preventing signup if this fails
       }
+
+      // If address information is provided, save it to the addresses table
+      if (address) {
+        // Ensure all required fields are present
+        if (
+          address.address &&
+          address.city &&
+          address.state &&
+          address.zip &&
+          address.country
+        ) {
+          const { error: addressError } = await supabase
+            .from("addresses")
+            .insert([
+              {
+                user_id: data.user.id,
+                address: address.address,
+                city: address.city,
+                state: address.state,
+                zip: address.zip,
+                country: address.country,
+                is_default:
+                  address.is_default !== undefined ? address.is_default : true,
+                created_at: new Date().toISOString(),
+                updated_at: new Date().toISOString(),
+              },
+            ]);
+
+          if (addressError) {
+            console.error("Error adding user address:", addressError);
+            // We don't throw here to avoid preventing signup if this fails
+          }
+        } else {
+          console.warn(
+            "Incomplete address information provided, skipping address save",
+          );
+        }
+      }
     } catch (err) {
       console.error("Error in users table operation:", err);
       // We don't throw here to avoid preventing signup if this fails
@@ -67,21 +116,23 @@ export async function signIn(email: string, password: string) {
   return data;
 }
 
-// Sign in as admin using Supabase RPC
+// Sign in as admin using Supabase admin_credentials table
 export async function signInAdmin(username: string, password: string) {
   try {
-    // First try to authenticate via Supabase RPC
-    const { data, error } = await supabase.rpc("verify_admin_credentials", {
-      admin_username: username,
-      admin_password: password,
-    });
+    // Query the admin_credentials table to check if the provided credentials match
+    const { data, error } = await supabase
+      .from("admin_credentials")
+      .select("username, password_hash")
+      .eq("username", username)
+      .single();
 
     if (error) {
-      console.error("Error verifying admin credentials:", error);
+      console.error("Error fetching admin credentials:", error);
       return false;
     }
 
-    if (data === true) {
+    // Check if credentials match
+    if (data && data.password_hash === password) {
       // Store admin status in local storage
       localStorage.setItem("isAdmin", "true");
       // Also set a session to maintain admin status across page reloads
@@ -132,6 +183,83 @@ export async function signOut() {
 export async function getCurrentUser(): Promise<User | null> {
   const { data } = await supabase.auth.getUser();
   return data.user;
+}
+
+// Get user addresses
+export async function getUserAddresses(userId: string): Promise<UserAddress[]> {
+  const { data, error } = await supabase
+    .from("addresses")
+    .select("*")
+    .eq("user_id", userId);
+
+  if (error) {
+    console.error("Error fetching user addresses:", error);
+    return [];
+  }
+
+  return data || [];
+}
+
+// Add a new address for a user
+export async function addUserAddress(userId: string, address: UserAddress) {
+  const { data, error } = await supabase
+    .from("addresses")
+    .insert([
+      {
+        user_id: userId,
+        address: address.address,
+        city: address.city,
+        state: address.state,
+        zip: address.zip,
+        country: address.country,
+        is_default:
+          address.is_default !== undefined ? address.is_default : true,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+      },
+    ])
+    .select();
+
+  if (error) {
+    throw error;
+  }
+
+  return data[0];
+}
+
+// Update an existing address
+export async function updateUserAddress(
+  addressId: string,
+  address: Partial<UserAddress>,
+) {
+  const { data, error } = await supabase
+    .from("addresses")
+    .update({
+      ...address,
+      updated_at: new Date().toISOString(),
+    })
+    .eq("id", addressId)
+    .select();
+
+  if (error) {
+    throw error;
+  }
+
+  return data[0];
+}
+
+// Delete an address
+export async function deleteUserAddress(addressId: string) {
+  const { error } = await supabase
+    .from("addresses")
+    .delete()
+    .eq("id", addressId);
+
+  if (error) {
+    throw error;
+  }
+
+  return true;
 }
 
 // Get the current session

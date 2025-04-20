@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { useNavigate, Link } from "react-router-dom";
+import { useNavigate, Link, useLocation } from "react-router-dom";
 import { signUp, signIn } from "../../services/auth";
 import { Button } from "../ui/button";
 import { Input } from "../ui/input";
@@ -24,6 +24,8 @@ const Signup: React.FC = () => {
   const [loading, setLoading] = useState(false);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const navigate = useNavigate();
+  const location = useLocation();
+  const returnUrl = location.state?.returnUrl;
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -55,10 +57,10 @@ const Signup: React.FC = () => {
       await signIn(email, password);
       // Show success message
       setSuccessMessage("Account created successfully!");
-      // Navigate to home page immediately using replace to prevent back navigation to signup
+      // Navigate to returnUrl if it exists, otherwise go to home page
       // Use setTimeout to ensure the success message is seen before redirecting
       setTimeout(() => {
-        navigate("/", { replace: true });
+        navigate(returnUrl || "/", { replace: true });
         window.location.reload();
       }, 1000);
     } catch (err: any) {

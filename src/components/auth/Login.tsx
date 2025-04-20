@@ -25,6 +25,7 @@ const Login: React.FC = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const { user, isAdmin } = useAuth();
+  const returnUrl = location.state?.returnUrl;
 
   // Check if we're coming from an admin route
   useEffect(() => {
@@ -71,7 +72,8 @@ const Login: React.FC = () => {
         }
       } else {
         // Regular user login
-        navigate("/", { replace: true });
+        // If there's a returnUrl in the state, navigate there, otherwise go to home
+        navigate(returnUrl || "/", { replace: true });
       }
 
       // Force reload to update UI components that depend on auth state

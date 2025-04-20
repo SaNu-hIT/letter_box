@@ -17,6 +17,8 @@ interface LetterPreviewProps {
   style?: string;
   letterStyle?: "classic" | "romantic" | "vintage" | "modern";
   recipientName?: string;
+  recipientAddress?: string;
+  senderAddress?: string;
   onEdit?: (newMessage: string) => void;
 }
 
@@ -25,6 +27,8 @@ const LetterPreview = ({
   letterStyle = "classic",
   style = "classic",
   recipientName = "Dearest One",
+  recipientAddress = "123 Love Lane\nHeartsville, HL 12345\nIndia",
+  senderAddress = "",
   onEdit,
 }: LetterPreviewProps) => {
   const [isEditing, setIsEditing] = useState(false);
@@ -194,6 +198,14 @@ const LetterPreview = ({
                         <div className={cn("text-lg", currentStyle.textColor)}>
                           {recipientName}
                         </div>
+                        <div className="text-xs text-gray-400 mt-2">
+                          Address:
+                        </div>
+                        <div className={cn("text-xs", currentStyle.textColor)}>
+                          {recipientAddress
+                            ? recipientAddress
+                            : "No address provided"}
+                        </div>
                       </div>
 
                       <div
@@ -214,6 +226,16 @@ const LetterPreview = ({
                         >
                           An anonymous admirer
                         </div>
+                        {senderAddress && (
+                          <div className="mt-2 text-xs text-gray-400">
+                            Return Address:
+                            <div
+                              className={cn("text-xs", currentStyle.textColor)}
+                            >
+                              {senderAddress}
+                            </div>
+                          </div>
+                        )}
                       </div>
                     </div>
 
@@ -303,6 +325,14 @@ const LetterPreview = ({
                 <div className={cn("text-sm mt-1", currentStyle.textColor)}>
                   An anonymous admirer
                 </div>
+                {senderAddress && (
+                  <div className="mt-2 text-xs text-gray-400">
+                    Return Address:
+                    <div className={cn("text-xs", currentStyle.textColor)}>
+                      {senderAddress}
+                    </div>
+                  </div>
+                )}
               </div>
 
               <div className="mt-4 flex justify-end">

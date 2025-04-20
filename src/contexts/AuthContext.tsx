@@ -26,13 +26,13 @@ type AuthContextType = {
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 // Create a function component for the hook to make it compatible with Fast Refresh
-function useAuth() {
+const useAuth = () => {
   const context = useContext(AuthContext);
   if (context === undefined) {
     throw new Error("useAuth must be used within an AuthProvider");
   }
   return context;
-}
+};
 
 type AuthProviderProps = {
   children: ReactNode;
@@ -50,7 +50,13 @@ function AuthProvider({ children }: AuthProviderProps) {
         const currentUser = await getCurrentUser();
         setUser(currentUser);
 
-        if (currentUser) {
+        // Check for admin status from session storage first
+        if (
+          sessionStorage.getItem("adminSession") === "true" ||
+          localStorage.getItem("isAdmin") === "true"
+        ) {
+          setIsAdmin(true);
+        } else if (currentUser) {
           const adminStatus = await checkIsAdmin();
           setIsAdmin(adminStatus);
         }
